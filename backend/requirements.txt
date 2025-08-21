@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+gspread
+pandas
+python-dotenv
