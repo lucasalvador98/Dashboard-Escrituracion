@@ -1,0 +1,29 @@
+# Node
+frontend/node_modules/
+frontend/build/
+
+# Python
+backend/__pycache__/
+backend/.env
+backend/*.pyc
+
+# VSCode
+.vscode/
+
+# Docker
+*.log
+docker-compose.override.yml
+
+# Otros
+*.sqlite3
+*.db
+*.parquet
+*.csv
+*.txt
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Credenciales
+backend/credenciales.json
