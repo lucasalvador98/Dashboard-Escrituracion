@@ -1,10 +1,11 @@
+version: "3.9"
+
 services:
   dashboard_escrituracion_backend:
     container_name: dashboard_escrituracion_backend
     build:
       context: https://github.com/lucasalvador98/Dashboard-Escrituracion.git#main:backend
       dockerfile: Dockerfile
-    
     restart: unless-stopped
     networks:
       back-net:
