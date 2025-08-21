@@ -8,8 +8,6 @@ services:
     networks:
       back-net:
         ipv4_address: 172.20.0.11
-    ports:
-
       services:
         dashboard_escrituracion_backend:
           container_name: dashboard_escrituracion_backend
