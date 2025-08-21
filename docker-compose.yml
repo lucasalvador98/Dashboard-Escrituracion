@@ -9,26 +9,38 @@ services:
       back-net:
         ipv4_address: 172.20.0.11
     ports:
-      - "8000:8000"
-    environment:
-      - GOOGLE_CLOUD_SERVICE_ACCOUNT=${GOOGLE_CLOUD_SERVICE_ACCOUNT}
 
-  dashboard_escrituracion_frontend:
-    container_name: dashboard_escrituracion_frontend
-    build:
-      context: https://github.com/lucasalvador98/Dashboard-Escrituracion.git#main:frontend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    networks:
-      front-net:
-        ipv4_address: 172.21.0.21
-      back-net:
-        ipv4_address: 172.20.0.21
-    ports:
-      - "8506:3000"
+      services:
+        dashboard_escrituracion_backend:
+          container_name: dashboard_escrituracion_backend
+          build:
+            context: https://github.com/lucasalvador98/Dashboard-Escrituracion.git#main:backend
+            dockerfile: Dockerfile
+          restart: unless-stopped
+          networks:
+            back-net:
+              ipv4_address: 172.20.0.11
+          ports:
+            - "8000:8000"
+          environment:
+            - GOOGLE_CLOUD_SERVICE_ACCOUNT=${GOOGLE_CLOUD_SERVICE_ACCOUNT}
 
-networks:
-  back-net:
-    external: true
-  front-net:
-    external: true
+        dashboard_escrituracion_frontend:
+          container_name: dashboard_escrituracion_frontend
+          build:
+            context: https://github.com/lucasalvador98/Dashboard-Escrituracion.git#main:frontend
+            dockerfile: Dockerfile
+          restart: unless-stopped
+          networks:
+            front-net:
+              ipv4_address: 172.21.0.21
+            back-net:
+              ipv4_address: 172.20.0.21
+          ports:
+            - "8506:3000"
+
+      networks:
+        back-net:
+          external: true
+        front-net:
+          external: true
