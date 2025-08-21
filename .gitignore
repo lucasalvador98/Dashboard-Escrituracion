@@ -4,8 +4,8 @@ frontend/build/
 
 # Python
 backend/__pycache__/
-backend/.env
 backend/*.pyc
+backend/.env
 
 # VSCode
 .vscode/
@@ -27,3 +27,6 @@ Thumbs.db
 
 # Credenciales
 backend/credenciales.json
+
+# Requerimientos
+!backend/requirements.txt
