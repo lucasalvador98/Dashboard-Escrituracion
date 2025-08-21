@@ -1,13 +1,35 @@
 services:
-  backend:
+  dashboard_escrituracion_backend:
+    container_name: dashboard_escrituracion_backend
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: https://github.com/lucasalvador98/Dashboard-Escrituracion.git
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    networks:
+      back-net:
+        ipv4_address: 172.20.0.11
     ports:
-      - "8000:8000"
-  frontend:
+      - 8000:8000
+    environment:
+      - GOOGLE_CLOUD_SERVICE_ACCOUNT=${GOOGLE_CLOUD_SERVICE_ACCOUNT}
+
+  dashboard_escrituracion_frontend:
+    container_name: dashboard_escrituracion_frontend
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: https://github.com/lucasalvador98/Dashboard-Escrituracion.git
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    networks:
+      front-net:
+        ipv4_address: 172.21.0.21
+      back-net:
+        ipv4_address: 172.20.0.21
     ports:
-      - "3000:3000"
+      - 8506:3000
+
+networks:
+  
+  back-net:
+    external: true
+  front-net:
+    external: true
