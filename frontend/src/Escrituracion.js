@@ -74,7 +74,7 @@ const Escrituracion = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get("http://localhost:8000/escrituracion?limit=1000");
+  const response = await axios.get("http://5.161.118.67:8000/escrituracion?limit=1000");
         const processedData = generarReporte(response.data.data);
         setData(processedData);
         setFilteredData(processedData);
