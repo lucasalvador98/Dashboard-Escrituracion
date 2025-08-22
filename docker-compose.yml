@@ -11,8 +11,8 @@ services:
       back-net:
         ipv4_address: 172.20.0.11
       default:  
-    #ports:
-    #  - "8000:8000"
+    ports:
+      - 8000:8000
     environment:
       - GOOGLE_CLOUD_SERVICE_ACCOUNT=${GOOGLE_CLOUD_SERVICE_ACCOUNT}
 
@@ -28,7 +28,7 @@ services:
       back-net:
         ipv4_address: 172.20.0.21
     ports:
-      - "8506:3000"
+      - 8506:3000
     environment:
       #- REACT_APP_API_URL=http://dashboard_escrituracion_backend:8000 #nunca se porque este no funca nunca
       - REACT_APP_API_URL=http://172.20.0.11:8000
