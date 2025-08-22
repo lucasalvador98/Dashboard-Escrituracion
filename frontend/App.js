@@ -4,7 +4,9 @@ function Escrituracion() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:8000/escrituracion")
+    const apiUrl = process.env.REACT_APP_API_URL;
+    fetch(`${apiUrl}/api/data`)
+    //fetch("http://localhost:8000/escrituracion")
       .then((response) => response.json())
       .then((data) => setData(data.data))
       .catch((error) => console.error("Error:", error));
