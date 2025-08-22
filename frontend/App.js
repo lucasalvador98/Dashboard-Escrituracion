@@ -6,7 +6,7 @@ function Escrituracion() {
   useEffect(() => {
     //const apiUrl = process.env.REACT_APP_API_URL;
     //fetch(`${apiUrl}/api/data`)
-    fetch("http://172.20.0.11:8000/escrituracion")
+    fetch("http://5.161.118.67:8507/escrituracion")
       .then((response) => response.json())
       .then((data) => setData(data.data))
       .catch((error) => console.error("Error:", error));
