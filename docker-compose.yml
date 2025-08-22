@@ -10,7 +10,7 @@ services:
     networks:
       back-net:
         ipv4_address: 172.20.0.11
-        default:  
+      default:  
     #ports:
     #  - "8000:8000"
     environment:
