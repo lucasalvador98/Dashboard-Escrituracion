@@ -60,6 +60,8 @@ const Escrituracion = () => {
   const [barrio, setBarrio] = useState("Todos");
   const [estado, setEstado] = useState("Todos");
   const [dni, setDni] = useState("");
+  const [sortCol, setSortCol] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
   // Estados de paginación por tabla
   const [pageIngresoSorteo, setPageIngresoSorteo] = useState(1);
   const [pageSorteoAceptacion, setPageSorteoAceptacion] = useState(1);
@@ -74,7 +76,8 @@ const Escrituracion = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-  const response = await axios.get("http://5.161.118.67:8000/escrituracion?limit=1000");
+        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+        const response = await axios.get(`${API_URL}/escrituracion?limit=1000`);
         const processedData = generarReporte(response.data.data);
         setData(processedData);
         setFilteredData(processedData);
@@ -211,9 +214,52 @@ const Escrituracion = () => {
     );
   };
 
+  // Flecha visual para sort
+  const getSortIcon = (col) => {
+    if (sortCol !== col) return '';
+    return sortOrder === 'asc' ? ' ▲' : ' ▼';
+  };
+
+  // Función de sort
+  function handleSort(col) {
+    if (sortCol === col) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortOrder('asc');
+    }
+  }
+
   const renderTable = (data, fecha1, fecha2, columna, titulo, page, setPage) => {
-    const totalPages = Math.ceil(data.length / itemsPerPage);
-    const paginatedData = getPaginated(data, page);
+    // Ordenar aquí, no en el estado global
+    let sortedData = [...data];
+    if (sortCol) {
+      sortedData.sort((a, b) => {
+        if (a[sortCol] == null) return 1;
+        if (b[sortCol] == null) return -1;
+        // Diferencia de días
+        if (sortCol === columna) {
+          let va = Number(a[sortCol]);
+          let vb = Number(b[sortCol]);
+          return sortOrder === 'asc' ? va - vb : vb - va;
+        }
+        // Fechas
+        if (sortCol === fecha1 || sortCol === fecha2) {
+          let va = new Date(a[sortCol]);
+          let vb = new Date(b[sortCol]);
+          return sortOrder === 'asc' ? va - vb : vb - va;
+        }
+        // Texto
+        if (typeof a[sortCol] === 'number' && typeof b[sortCol] === 'number') {
+          return sortOrder === 'asc' ? a[sortCol] - b[sortCol] : b[sortCol] - a[sortCol];
+        }
+        return sortOrder === 'asc'
+          ? String(a[sortCol]).localeCompare(String(b[sortCol]))
+          : String(b[sortCol]).localeCompare(String(a[sortCol]));
+      });
+    }
+    const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+    const paginatedData = getPaginated(sortedData, page);
 
     return (
       <div>
@@ -226,9 +272,15 @@ const Escrituracion = () => {
               <th>Barrio</th>
               <th>Beneficiario</th>
               <th>DNI</th>
-              <th>{fecha1}</th>
-              <th>{fecha2}</th>
-              <th>Diferencia (días)</th>
+              <th onClick={()=>handleSort(fecha1)} style={{cursor:'pointer'}}>
+                {fecha1} {getSortIcon(fecha1)}
+              </th>
+              <th onClick={()=>handleSort(fecha2)} style={{cursor:'pointer'}}>
+                {fecha2} {getSortIcon(fecha2)}
+              </th>
+              <th onClick={()=>handleSort(columna)} style={{cursor:'pointer'}}>
+                Diferencia de días {getSortIcon(columna)}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -270,7 +322,6 @@ const Escrituracion = () => {
 
   return (
     <div className="main-container">
-      <h1>Dashboard de Escrituración</h1>
       <div className="filters">
         <label>
           Departamento:
