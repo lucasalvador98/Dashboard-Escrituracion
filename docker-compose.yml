@@ -30,8 +30,7 @@ services:
     ports:
       - "8506:3000"
     environment:
-      #- REACT_APP_API_URL=http://dashboard_escrituracion_backend:8000 #nunca se porque este no funca nunca
-      - REACT_APP_API_URL=http://172.20.0.11:8000
+      - REACT_APP_API_URL_BACKEND=http://5.161.118.67:8507
 
 networks:
   back-net:

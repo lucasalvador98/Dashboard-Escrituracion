@@ -19,7 +19,7 @@ function StockTab() {
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+				const API_URL = process.env.BASE_URL_BACKEND || "http://localhost:8000";
 				const response = await axios.get(`${API_URL}/escrituracion?limit=1000`);
 				setStockData(Array.isArray(response.data.data) ? response.data.data : []);
 				setLoading(false);
