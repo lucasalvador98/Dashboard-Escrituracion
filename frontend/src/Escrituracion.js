@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./styles.css";
 import API_CONFIG from "./config-api";
+const API_URL = API_CONFIG.BASE_URL_BACKEND;
 
 const itemsPerPage = 15;
 
@@ -77,8 +78,7 @@ const Escrituracion = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const API_URL = API_CONFIG.BASE_URL_BACKEND;
-        const response = await axios.get(`${API_URL}/escrituracion?limit=1000`);
+        const response = await axios.get(`${API_URL}/escrituracion`);
         const processedData = generarReporte(Array.isArray(response.data.data) ? response.data.data : Array.isArray(response.data) ? response.data : []);
         setData(processedData);
         setFilteredData(processedData);

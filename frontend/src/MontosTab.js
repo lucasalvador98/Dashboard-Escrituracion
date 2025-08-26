@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import API_CONFIG from "./config-api";
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
+const response = await axios.get(`${API_URL}/escrituracion`);
 
 function MontosTab() {
   const [data, setData] = useState([]);
