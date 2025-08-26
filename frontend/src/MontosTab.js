@@ -1,153 +1,86 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import API_CONFIG from "./config-api";
-const API_URL = API_CONFIG.BASE_URL_BACKEND;
+import React, { useMemo } from "react";
+import "./styles.css";
+import useDataLoader from "./hooks/useDataLoader";
+import useFilters from "./hooks/useFilters";
+import SelectFilters from "./components/SelectFilters";
 
-function MontosTab() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [filtros, setFiltros] = useState({ departamento: "Todos", localidad: "Todos" });
+function parseMonto(m) {
+  if (m == null) return 0;
+  if (typeof m === "number") return m;
+  let s = String(m).trim();
+  // eliminar símbolos y espacios, aceptar coma como separador decimal
+  s = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/escrituracion`);
-        const arr = Array.isArray(response.data.data) ? response.data.data : Array.isArray(response.data) ? response.data : [];
-        setData(arr);
-        setLoading(false);
-      } catch (error) {
-        setError("Error al cargar datos");
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+function formatMoney(val) {
+  const num = Number(val) || 0;
+  const parts = num.toFixed(2).split(".");
+  let intPart = parts[0];
+  const decPart = parts[1];
+  intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `$${intPart},${decPart}`;
+}
 
-  // Filtros dependientes
-  const departamentos = ["Todos", ...new Set(data.map(item => item.Departamento))];
-  const localidades = filtros.departamento === "Todos"
-    ? ["Todos", ...new Set(data.map(item => item.Localidad))]
-    : ["Todos", ...new Set(data.filter(item => item.Departamento === filtros.departamento).map(item => item.Localidad))];
-  const escribanos = [...new Set(data.map(item => item["Escribano Designado"]).filter(Boolean))];
-
-  // Filtrar datos
-  let filtered = data.filter(item => {
-    if (filtros.departamento && item.Departamento && !item.Departamento.toUpperCase().includes(filtros.departamento.trim().toUpperCase())) return false;
-    if (filtros.localidad && item.Localidad && !item.Localidad.toUpperCase().includes(filtros.localidad.trim().toUpperCase())) return false;
-    if (filtros.barrio && item.Barrio && !item.Barrio.toUpperCase().includes(filtros.barrio.trim().toUpperCase())) return false;
-    if (filtros.estado && item.Estado && !item.Estado.toUpperCase().includes(filtros.estado.trim().toUpperCase())) return false;
-    if (filtros.escribano && item["Escribano Designado"] && !item["Escribano Designado"].toUpperCase().includes(filtros.escribano.trim().toUpperCase())) return false;
-    return true;
+export default function MontosTab() {
+  const { data, loading, error } = useDataLoader("escrituracion");
+  const { filters, setFilters, applyFilters } = useFilters({
+    departamento: "Todos",
+    localidad: "Todos",
+    barrio: "Todos",
+    estado: "Todos",
+    escribano: "",
+    dni: ""
   });
 
-  // Agrupación por Departamento > Localidad
-  const grouped = {};
-  filtered.forEach(item => {
-    if (!grouped[item.Departamento]) grouped[item.Departamento] = {};
-    if (!grouped[item.Departamento][item.Localidad]) grouped[item.Departamento][item.Localidad] = [];
-    grouped[item.Departamento][item.Localidad].push(item);
-  });
+  const filtered = useMemo(() => applyFilters(data), [data, filters, applyFilters]);
 
-  // Suma de montos y beneficiarios por estado
+  // Agrupar por Departamento > Localidad
+  const grouped = useMemo(() => {
+    const g = {};
+    filtered.forEach(item => {
+      const dept = item.Departamento || "Sin Departamento";
+      const loc = item.Localidad || "Sin Localidad";
+      if (!g[dept]) g[dept] = {};
+      if (!g[dept][loc]) g[dept][loc] = [];
+      g[dept][loc].push(item);
+    });
+    return g;
+  }, [filtered]);
+
   function sumMontos(items, estado) {
     return items
-      .filter(i => i.Estado === estado)
-      .reduce((acc, curr) => {
-        let monto = curr.MontoEjecutado;
-        if (typeof monto === 'string') {
-          // Eliminar puntos, comas, símbolos y espacios
-          monto = monto.replace(/[^\d.-]/g, '');
-        }
-        return acc + (parseFloat(monto) || 0);
-      }, 0);
+      .filter(i => (i.Estado || "") === estado)
+      .reduce((acc, curr) => acc + parseMonto(curr.MontoEjecutado ?? curr.Monto), 0);
   }
   function sumBenef(items, estado) {
-    return items.filter(i => i.Estado === estado).length;
+    return items.filter(i => (i.Estado || "") === estado).length;
   }
 
-  // Suma total general
   let totalBenefEntregada = 0;
   let totalMontoEntregada = 0;
   let totalBenefFinalizada = 0;
   let totalMontoFinalizada = 0;
 
-  Object.entries(grouped).forEach(([depto, locs]) => {
-    Object.entries(locs).forEach(([loc, items]) => {
+  Object.values(grouped).forEach(locs =>
+    Object.values(locs).forEach(items => {
       totalBenefEntregada += sumBenef(items, "Entregada");
       totalMontoEntregada += sumMontos(items, "Entregada");
       totalBenefFinalizada += sumBenef(items, "Finalizada sin Entregar");
       totalMontoFinalizada += sumMontos(items, "Finalizada sin Entregar");
-    });
-  });
-
-  // Formato moneda
-  function formatMoney(val) {
-  // Forzar formato $xxx.xxx,yy
-  let num = Number(val);
-  if (isNaN(num)) return "$0,00";
-  let parts = num.toFixed(2).split(".");
-  let intPart = parts[0];
-  let decPart = parts[1];
-  // Separador de miles con punto
-  intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return `$${intPart},${decPart}`;
-  }
-
-  function FilterSelectInput({ options, value, onChange, placeholder }) {
-    const [input, setInput] = useState(value || "");
-    const filteredOptions = options.filter(opt =>
-      opt && opt.toUpperCase().includes(input.trim().toUpperCase())
-    );
-    return (
-      <div className="filter-combo">
-        <input
-          className="filter-input"
-          type="text"
-          value={input}
-          onChange={e => {
-            setInput(e.target.value);
-            onChange(e.target.value);
-          }}
-          placeholder={placeholder}
-          list={placeholder + "-list"}
-          autoComplete="off"
-        />
-        <datalist id={placeholder + "-list"}>
-          {filteredOptions.map(opt => (
-            <option key={opt} value={opt} />
-          ))}
-        </datalist>
-      </div>
-    );
-  }
+    })
+  );
 
   return (
     <div className="main-container">
-      <div className="filters filters-modern">
-        <FilterSelectInput
-          options={departamentos}
-          value={filtros.departamento}
-          onChange={val => setFiltros(f => ({ ...f, departamento: val, localidad: "Todos" }))}
-          placeholder="Departamento"
-        />
-        <FilterSelectInput
-          options={localidades}
-          value={filtros.localidad}
-          onChange={val => setFiltros(f => ({ ...f, localidad: val }))}
-          placeholder="Localidad"
-        />
-        <FilterSelectInput
-          options={escribanos}
-          value={filtros.escribano}
-          onChange={val => setFiltros(f => ({ ...f, escribano: val }))}
-          placeholder="Escribano Designado"
-        />
-      </div>
+      <SelectFilters data={data} filters={filters} setFilters={setFilters} />
+
       {loading && <p>Cargando datos...</p>}
-      {error && <p style={{color:'red'}}>{error}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
+
       {!loading && !error && (
-        <div style={{overflowX:'auto',maxHeight:'70vh',position:'relative'}}>
+        <div style={{ overflowX: "auto", maxHeight: "70vh", position: "relative" }}>
           <table className="stock-table">
             <thead>
               <tr>
@@ -160,19 +93,22 @@ function MontosTab() {
               </tr>
             </thead>
             <tbody>
-              {Object.entries(grouped).map(([depto, locs]) => (
-                Object.entries(locs).map(([loc, items], idx) => (
-                  <tr key={depto+loc} className={idx % 2 === 0 ? "row-even" : "row-odd"}>
-                    <td>{depto}</td>
-                    <td>{loc}</td>
-                    <td>{sumBenef(items, "Entregada")}</td>
-                    <td>{formatMoney(sumMontos(items, "Entregada"))}</td>
-                    <td>{sumBenef(items, "Finalizada sin Entregar")}</td>
-                    <td>{formatMoney(sumMontos(items, "Finalizada sin Entregar"))}</td>
-                  </tr>
-                ))
-              ))}
-              <tr style={{fontWeight:'bold',background:'#e1eafc'}}>
+              {Object.entries(grouped).map(([depto, locs]) =>
+                Object.entries(locs).map(([loc]) => {
+                  const items = locs[loc];
+                  return (
+                    <tr key={depto + "|" + loc}>
+                      <td>{depto}</td>
+                      <td>{loc}</td>
+                      <td>{sumBenef(items, "Entregada")}</td>
+                      <td>{formatMoney(sumMontos(items, "Entregada"))}</td>
+                      <td>{sumBenef(items, "Finalizada sin Entregar")}</td>
+                      <td>{formatMoney(sumMontos(items, "Finalizada sin Entregar"))}</td>
+                    </tr>
+                  );
+                })
+              )}
+              <tr style={{ fontWeight: "bold", background: "#e1eafc" }}>
                 <td colSpan={2}>Suma total</td>
                 <td>{totalBenefEntregada}</td>
                 <td>{formatMoney(totalMontoEntregada)}</td>
@@ -186,5 +122,3 @@ function MontosTab() {
     </div>
   );
 }
-
-export default MontosTab;
