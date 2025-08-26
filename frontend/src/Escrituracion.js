@@ -94,11 +94,12 @@ const Escrituracion = () => {
   // Aplicar filtros
   useEffect(() => {
     let filtered = data.filter(item => {
-      if (filtros.departamento && item.Departamento && !item.Departamento.toUpperCase().includes(filtros.departamento.trim().toUpperCase())) return false;
-      if (filtros.localidad && item.Localidad && !item.Localidad.toUpperCase().includes(filtros.localidad.trim().toUpperCase())) return false;
-      if (filtros.barrio && item.Barrio && !item.Barrio.toUpperCase().includes(filtros.barrio.trim().toUpperCase())) return false;
-      if (filtros.estado && item.Estado && !item.Estado.toUpperCase().includes(filtros.estado.trim().toUpperCase())) return false;
-      if (filtros.escribano && item["Escribano Designado"] && !item["Escribano Designado"].toUpperCase().includes(filtros.escribano.trim().toUpperCase())) return false;
+      if (departamento && item.Departamento && !item.Departamento.toUpperCase().includes(departamento.trim().toUpperCase())) return false;
+      if (localidad && item.Localidad && !item.Localidad.toUpperCase().includes(localidad.trim().toUpperCase())) return false;
+      if (barrio && item.Barrio && !item.Barrio.toUpperCase().includes(barrio.trim().toUpperCase())) return false;
+      if (estado && item.Estado && !item.Estado.toUpperCase().includes(estado.trim().toUpperCase())) return false;
+      if (escribano && item["Escribano Designado"] && !item["Escribano Designado"].toUpperCase().includes(escribano.trim().toUpperCase())) return false;
+      if (dni && (!item.DNI || !item.DNI.toString().includes(dni))) return false;
       return true;
     });
     setFilteredData(filtered);
