@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import API_CONFIG from "./config-api";
+const API_URL = API_CONFIG.BASE_URL_BACKEND;
 
 function StockTab() {
 	// Estados
@@ -19,9 +21,9 @@ function StockTab() {
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const API_URL = process.env.BASE_URL_BACKEND;
 				const response = await axios.get(`${API_URL}/escrituracion?limit=1000`);
-				setStockData(Array.isArray(response.data.data) ? response.data.data : []);
+				const arr = Array.isArray(response.data.data) ? response.data.data : Array.isArray(response.data) ? response.data : [];
+				setStockData(arr);
 				setLoading(false);
 			} catch (error) {
 				setError("Error al cargar datos");

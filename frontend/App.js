@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
+import API_CONFIG from "./config-api";
+
+const API_URL = API_CONFIG.BASE_URL_BACKEND;
 
 function Escrituracion() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    //const apiUrl = process.env.REACT_APP_API_URL;
-    fetch("http://5.161.118.67:8507/escrituracion")
+    fetch(`${API_URL}/escrituracion`)
       .then((response) => response.json())
       .then((data) => setData(data.data))
       .catch((error) => console.error("Error:", error));
