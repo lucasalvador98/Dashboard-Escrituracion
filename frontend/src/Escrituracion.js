@@ -64,6 +64,8 @@ const Escrituracion = () => {
   const [dni, setDni] = useState("");
   const [sortCol, setSortCol] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
+  const [escribano, setEscribano] = useState("");
+
   // Estados de paginación por tabla
   const [pageIngresoSorteo, setPageIngresoSorteo] = useState(1);
   const [pageSorteoAceptacion, setPageSorteoAceptacion] = useState(1);
@@ -92,10 +94,11 @@ const Escrituracion = () => {
   // Aplicar filtros
   useEffect(() => {
     let filtered = data.filter(item => {
-      if (departamento !== "Todos" && item.Departamento.trim().toUpperCase() !== departamento.trim().toUpperCase()) return false;
-      if (localidad !== "Todos" && item.Localidad.trim().toUpperCase() !== localidad.trim().toUpperCase()) return false;
-      if (barrio !== "Todos" && item.Barrio.trim().toUpperCase() !== barrio.trim().toUpperCase()) return false;
-      if (estado !== "Todos" && item.Estado.trim().toUpperCase() !== estado.trim().toUpperCase()) return false;
+      if (departamento !== "Todos" && item.Departamento.trim().toUpperCase().indexOf(departamento.trim().toUpperCase()) === -1) return false;
+      if (localidad !== "Todos" && item.Localidad.trim().toUpperCase().indexOf(localidad.trim().toUpperCase()) === -1) return false;
+      if (barrio !== "Todos" && item.Barrio.trim().toUpperCase().indexOf(barrio.trim().toUpperCase()) === -1) return false;
+      if (estado !== "Todos" && item.Estado.trim().toUpperCase().indexOf(estado.trim().toUpperCase()) === -1) return false;
+      if (escribano && item["Escribano Designado"] && item["Escribano Designado"].toUpperCase().indexOf(escribano.trim().toUpperCase()) === -1) return false;
       if (dni && (!item.DNI || !item.DNI.toString().includes(dni))) return false;
       return true;
     });
@@ -106,7 +109,7 @@ const Escrituracion = () => {
     setPageAceptacionFirma(1);
     setPageFirmaIngreso(1);
     setPageIngresoTestimonio(1);
-  }, [departamento, localidad, barrio, estado, dni, data]);
+  }, [departamento, localidad, barrio, estado, dni, data, escribano]);
 
   // Calcular diferencias de días entre pares de fechas
   const calcularDiferenciaDias = (fecha1, fecha2) => {
@@ -139,6 +142,7 @@ const Escrituracion = () => {
         (localidad === "Todos" || item.Localidad === localidad)
       ).map(item => item.Barrio))];
   const estados = [...new Set(data.map(item => item.Estado))];
+  const escribanos = [...new Set(data.map(item => item["Escribano Designado"]).filter(Boolean))];
 
   // Paginación por tabla
   const getPaginated = (data, page) => data.slice((page - 1) * itemsPerPage, page * itemsPerPage);
@@ -323,50 +327,43 @@ const Escrituracion = () => {
     pageIngresoTestimonio, setPageIngresoTestimonio
   };
 
+  function renderAutoComplete(options, value, onChange, placeholder) {
+    const filteredOptions = options.filter(opt => opt.toUpperCase().includes(value.trim().toUpperCase()));
+    return (
+      <div className="autocomplete">
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="filter-input"
+        />
+        {value && (
+          <ul className="autocomplete-list">
+            {filteredOptions.slice(0,8).map(opt => (
+              <li key={opt} onClick={() => onChange(opt)}>{opt}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="main-container">
-      <div className="filters">
-        <label>
-          Departamento:
-          <select value={departamento} onChange={e => {
-            setDepartamento(e.target.value);
-            setLocalidad("Todos");
-            setBarrio("Todos");
-          }}>
-            <option value="Todos">Todos</option>
-            {departamentos.map(dep => <option key={dep} value={dep}>{dep}</option>)}
-          </select>
-        </label>
-        <label>
-          Localidad:
-          <select value={localidad} onChange={e => {
-            setLocalidad(e.target.value);
-            setBarrio("Todos");
-          }}>
-            <option value="Todos">Todos</option>
-            {localidades.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-          </select>
-        </label>
-        <label>
-          Barrio:
-          <select value={barrio} onChange={e => setBarrio(e.target.value)}>
-            <option value="Todos">Todos</option>
-            {barrios.map(bar => <option key={bar} value={bar}>{bar}</option>)}
-          </select>
-        </label>
-        <label>
-          Estado:
-          <select value={estado} onChange={e => setEstado(e.target.value)}>
-            <option value="Todos">Todos</option>
-            {estados.map(est => <option key={est} value={est}>{est}</option>)}
-          </select>
-        </label>
+      <div className="filters filters-modern">
+        {renderAutoComplete(departamentos, departamento, val => {setDepartamento(val);setLocalidad("Todos");setBarrio("Todos");}, "Departamento")}
+        {renderAutoComplete(localidades, localidad, val => {setLocalidad(val);setBarrio("Todos");}, "Localidad")}
+        {renderAutoComplete(barrios, barrio, val => setBarrio(val), "Barrio")}
+        {renderAutoComplete(estados, estado, val => setEstado(val), "Estado")}
+        {renderAutoComplete(escribanos, escribano || "", val => setEscribano(val), "Escribano Designado")}
         <label>
           DNI:
           <input
             type="text"
             value={dni}
             onChange={e => setDni(e.target.value)}
+            className="filter-input"
           />
         </label>
       </div>

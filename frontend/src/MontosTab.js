@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import API_CONFIG from "./config-api";
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
-const response = await axios.get(`${API_URL}/escrituracion`);
 
 function MontosTab() {
   const [data, setData] = useState([]);
@@ -13,7 +12,7 @@ function MontosTab() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get(`${API_URL}/escrituracion?limit=1000`);
+        const response = await axios.get(`${API_URL}/escrituracion`);
         const arr = Array.isArray(response.data.data) ? response.data.data : Array.isArray(response.data) ? response.data : [];
         setData(arr);
         setLoading(false);
@@ -30,13 +29,13 @@ function MontosTab() {
   const localidades = filtros.departamento === "Todos"
     ? ["Todos", ...new Set(data.map(item => item.Localidad))]
     : ["Todos", ...new Set(data.filter(item => item.Departamento === filtros.departamento).map(item => item.Localidad))];
+  const escribanos = [...new Set(data.map(item => item["Escribano Designado"]).filter(Boolean))];
 
   // Filtrar datos
   let filtered = data.filter(item => {
-    if (filtros.departamento !== "Todos" && item.Departamento.trim().toUpperCase() !== filtros.departamento.trim().toUpperCase()) return false;
-    if (filtros.localidad !== "Todos" && item.Localidad.trim().toUpperCase() !== filtros.localidad.trim().toUpperCase()) return false;
-    if (filtros.barrio !== "Todos" && item.Barrio.trim().toUpperCase() !== filtros.barrio.trim().toUpperCase()) return false;
-    if (filtros.estado !== "Todos" && item.Estado.trim().toUpperCase() !== filtros.estado.trim().toUpperCase()) return false;
+    if (filtros.departamento && item.Departamento.trim().toUpperCase().indexOf(filtros.departamento.trim().toUpperCase()) === -1) return false;
+    if (filtros.localidad && item.Localidad.trim().toUpperCase().indexOf(filtros.localidad.trim().toUpperCase()) === -1) return false;
+    if (filtros.escribano && item["Escribano Designado"] && item["Escribano Designado"].toUpperCase().indexOf(filtros.escribano.trim().toUpperCase()) === -1) return false;
     return true;
   });
 
@@ -93,19 +92,34 @@ function MontosTab() {
   return `$${intPart},${decPart}`;
   }
 
+  function renderAutoComplete(options, value, onChange, placeholder) {
+    const filteredOptions = options.filter(opt => opt.toUpperCase().includes(value.trim().toUpperCase()));
+    return (
+      <div className="autocomplete">
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="filter-input"
+        />
+        {value && (
+          <ul className="autocomplete-list">
+            {filteredOptions.slice(0,8).map(opt => (
+              <li key={opt} onClick={() => onChange(opt)}>{opt}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="main-container">
-      <div className="filters">
-        <label>Departamento:
-          <select value={filtros.departamento} onChange={e=>setFiltros(f=>({...f,departamento:e.target.value,localidad:"Todos"}))}>
-            {departamentos.map(dep=><option key={dep} value={dep}>{dep}</option>)}
-          </select>
-        </label>
-        <label>Localidad:
-          <select value={filtros.localidad} onChange={e=>setFiltros(f=>({...f,localidad:e.target.value}))}>
-            {localidades.map(loc=><option key={loc} value={loc}>{loc}</option>)}
-          </select>
-        </label>
+      <div className="filters filters-modern">
+        {renderAutoComplete(departamentos, filtros.departamento, val => setFiltros(f=>({...f,departamento:val,localidad:"Todos"})), "Departamento")}
+        {renderAutoComplete(localidades, filtros.localidad, val => setFiltros(f=>({...f,localidad:val})), "Localidad")}
+        {renderAutoComplete(escribanos, filtros.escribano || "", val => setFiltros(f=>({...f,escribano:val})), "Escribano Designado")}
       </div>
       {loading && <p>Cargando datos...</p>}
       {error && <p style={{color:'red'}}>{error}</p>}
