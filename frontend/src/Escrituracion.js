@@ -94,12 +94,11 @@ const Escrituracion = () => {
   // Aplicar filtros
   useEffect(() => {
     let filtered = data.filter(item => {
-      if (departamento !== "Todos" && item.Departamento.trim().toUpperCase().indexOf(departamento.trim().toUpperCase()) === -1) return false;
-      if (localidad !== "Todos" && item.Localidad.trim().toUpperCase().indexOf(localidad.trim().toUpperCase()) === -1) return false;
-      if (barrio !== "Todos" && item.Barrio.trim().toUpperCase().indexOf(barrio.trim().toUpperCase()) === -1) return false;
-      if (estado !== "Todos" && item.Estado.trim().toUpperCase().indexOf(estado.trim().toUpperCase()) === -1) return false;
-      if (escribano && item["Escribano Designado"] && item["Escribano Designado"].toUpperCase().indexOf(escribano.trim().toUpperCase()) === -1) return false;
-      if (dni && (!item.DNI || !item.DNI.toString().includes(dni))) return false;
+      if (filtros.departamento && item.Departamento && !item.Departamento.toUpperCase().includes(filtros.departamento.trim().toUpperCase())) return false;
+      if (filtros.localidad && item.Localidad && !item.Localidad.toUpperCase().includes(filtros.localidad.trim().toUpperCase())) return false;
+      if (filtros.barrio && item.Barrio && !item.Barrio.toUpperCase().includes(filtros.barrio.trim().toUpperCase())) return false;
+      if (filtros.estado && item.Estado && !item.Estado.toUpperCase().includes(filtros.estado.trim().toUpperCase())) return false;
+      if (filtros.escribano && item["Escribano Designado"] && !item["Escribano Designado"].toUpperCase().includes(filtros.escribano.trim().toUpperCase())) return false;
       return true;
     });
     setFilteredData(filtered);
@@ -352,11 +351,36 @@ const Escrituracion = () => {
   return (
     <div className="main-container">
       <div className="filters filters-modern">
-        {renderAutoComplete(departamentos, departamento, val => {setDepartamento(val);setLocalidad("Todos");setBarrio("Todos");}, "Departamento")}
-        {renderAutoComplete(localidades, localidad, val => {setLocalidad(val);setBarrio("Todos");}, "Localidad")}
-        {renderAutoComplete(barrios, barrio, val => setBarrio(val), "Barrio")}
-        {renderAutoComplete(estados, estado, val => setEstado(val), "Estado")}
-        {renderAutoComplete(escribanos, escribano || "", val => setEscribano(val), "Escribano Designado")}
+        <FilterSelectInput
+          options={departamentos}
+          value={departamento}
+          onChange={val => { setDepartamento(val); setLocalidad("Todos"); setBarrio("Todos"); }}
+          placeholder="Departamento"
+        />
+        <FilterSelectInput
+          options={localidades}
+          value={localidad}
+          onChange={val => { setLocalidad(val); setBarrio("Todos"); }}
+          placeholder="Localidad"
+        />
+        <FilterSelectInput
+          options={barrios}
+          value={barrio}
+          onChange={val => setBarrio(val)}
+          placeholder="Barrio"
+        />
+        <FilterSelectInput
+          options={estados}
+          value={estado}
+          onChange={val => setEstado(val)}
+          placeholder="Estado"
+        />
+        <FilterSelectInput
+          options={escribanos}
+          value={escribano}
+          onChange={val => setEscribano(val)}
+          placeholder="Escribano Designado"
+        />
         <label>
           DNI:
           <input
@@ -399,5 +423,33 @@ const Escrituracion = () => {
     </div>
   );
 };
+
+function FilterSelectInput({ options, value, onChange, placeholder }) {
+  const [input, setInput] = useState(value || "");
+  const filteredOptions = options.filter(opt =>
+    opt && opt.toUpperCase().includes(input.trim().toUpperCase())
+  );
+  return (
+    <div className="filter-combo">
+      <input
+        className="filter-input"
+        type="text"
+        value={input}
+        onChange={e => {
+          setInput(e.target.value);
+          onChange(e.target.value);
+        }}
+        placeholder={placeholder}
+        list={placeholder + "-list"}
+        autoComplete="off"
+      />
+      <datalist id={placeholder + "-list"}>
+        {filteredOptions.map(opt => (
+          <option key={opt} value={opt} />
+        ))}
+      </datalist>
+    </div>
+  );
+}
 
 export default Escrituracion;

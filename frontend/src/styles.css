@@ -168,6 +168,14 @@ h1 {
 .autocomplete-list li:hover {
   background: #e1eafc;
 }
+.filter-combo {
+  position: relative;
+  width: 180px;
+  margin-bottom: 0.5rem;
+}
+.filter-combo input {
+  width: 100%;
+}
 
 /* Tablas */
 table {

@@ -33,9 +33,11 @@ function MontosTab() {
 
   // Filtrar datos
   let filtered = data.filter(item => {
-    if (filtros.departamento && item.Departamento.trim().toUpperCase().indexOf(filtros.departamento.trim().toUpperCase()) === -1) return false;
-    if (filtros.localidad && item.Localidad.trim().toUpperCase().indexOf(filtros.localidad.trim().toUpperCase()) === -1) return false;
-    if (filtros.escribano && item["Escribano Designado"] && item["Escribano Designado"].toUpperCase().indexOf(filtros.escribano.trim().toUpperCase()) === -1) return false;
+    if (filtros.departamento && item.Departamento && !item.Departamento.toUpperCase().includes(filtros.departamento.trim().toUpperCase())) return false;
+    if (filtros.localidad && item.Localidad && !item.Localidad.toUpperCase().includes(filtros.localidad.trim().toUpperCase())) return false;
+    if (filtros.barrio && item.Barrio && !item.Barrio.toUpperCase().includes(filtros.barrio.trim().toUpperCase())) return false;
+    if (filtros.estado && item.Estado && !item.Estado.toUpperCase().includes(filtros.estado.trim().toUpperCase())) return false;
+    if (filtros.escribano && item["Escribano Designado"] && !item["Escribano Designado"].toUpperCase().includes(filtros.escribano.trim().toUpperCase())) return false;
     return true;
   });
 
@@ -92,24 +94,30 @@ function MontosTab() {
   return `$${intPart},${decPart}`;
   }
 
-  function renderAutoComplete(options, value, onChange, placeholder) {
-    const filteredOptions = options.filter(opt => opt.toUpperCase().includes(value.trim().toUpperCase()));
+  function FilterSelectInput({ options, value, onChange, placeholder }) {
+    const [input, setInput] = useState(value || "");
+    const filteredOptions = options.filter(opt =>
+      opt && opt.toUpperCase().includes(input.trim().toUpperCase())
+    );
     return (
-      <div className="autocomplete">
+      <div className="filter-combo">
         <input
-          type="text"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
           className="filter-input"
+          type="text"
+          value={input}
+          onChange={e => {
+            setInput(e.target.value);
+            onChange(e.target.value);
+          }}
+          placeholder={placeholder}
+          list={placeholder + "-list"}
+          autoComplete="off"
         />
-        {value && (
-          <ul className="autocomplete-list">
-            {filteredOptions.slice(0,8).map(opt => (
-              <li key={opt} onClick={() => onChange(opt)}>{opt}</li>
-            ))}
-          </ul>
-        )}
+        <datalist id={placeholder + "-list"}>
+          {filteredOptions.map(opt => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
       </div>
     );
   }
@@ -117,9 +125,24 @@ function MontosTab() {
   return (
     <div className="main-container">
       <div className="filters filters-modern">
-        {renderAutoComplete(departamentos, filtros.departamento, val => setFiltros(f=>({...f,departamento:val,localidad:"Todos"})), "Departamento")}
-        {renderAutoComplete(localidades, filtros.localidad, val => setFiltros(f=>({...f,localidad:val})), "Localidad")}
-        {renderAutoComplete(escribanos, filtros.escribano || "", val => setFiltros(f=>({...f,escribano:val})), "Escribano Designado")}
+        <FilterSelectInput
+          options={departamentos}
+          value={filtros.departamento}
+          onChange={val => setFiltros(f => ({ ...f, departamento: val, localidad: "Todos" }))}
+          placeholder="Departamento"
+        />
+        <FilterSelectInput
+          options={localidades}
+          value={filtros.localidad}
+          onChange={val => setFiltros(f => ({ ...f, localidad: val }))}
+          placeholder="Localidad"
+        />
+        <FilterSelectInput
+          options={escribanos}
+          value={filtros.escribano}
+          onChange={val => setFiltros(f => ({ ...f, escribano: val }))}
+          placeholder="Escribano Designado"
+        />
       </div>
       {loading && <p>Cargando datos...</p>}
       {error && <p style={{color:'red'}}>{error}</p>}

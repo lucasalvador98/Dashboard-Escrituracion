@@ -42,11 +42,11 @@ function StockTab() {
 
     // Filtrar datos
     let filtered = stockData.filter(item => {
-        if (filtros.departamento && item.Departamento.trim().toUpperCase().indexOf(filtros.departamento.trim().toUpperCase()) === -1) return false;
-        if (filtros.localidad && item.Localidad.trim().toUpperCase().indexOf(filtros.localidad.trim().toUpperCase()) === -1) return false;
-        if (filtros.barrio && item.Barrio.trim().toUpperCase().indexOf(filtros.barrio.trim().toUpperCase()) === -1) return false;
-        if (filtros.estado && item.Estado.trim().toUpperCase().indexOf(filtros.estado.trim().toUpperCase()) === -1) return false;
-        if (filtros.escribano && item["Escribano Designado"] && item["Escribano Designado"].toUpperCase().indexOf(filtros.escribano.trim().toUpperCase()) === -1) return false;
+        if (filtros.departamento && item.Departamento && !item.Departamento.toUpperCase().includes(filtros.departamento.trim().toUpperCase())) return false;
+        if (filtros.localidad && item.Localidad && !item.Localidad.toUpperCase().includes(filtros.localidad.trim().toUpperCase())) return false;
+        if (filtros.barrio && item.Barrio && !item.Barrio.toUpperCase().includes(filtros.barrio.trim().toUpperCase())) return false;
+        if (filtros.estado && item.Estado && !item.Estado.toUpperCase().includes(filtros.estado.trim().toUpperCase())) return false;
+        if (filtros.escribano && item["Escribano Designado"] && !item["Escribano Designado"].toUpperCase().includes(filtros.escribano.trim().toUpperCase())) return false;
         return true;
     });
 
@@ -83,37 +83,67 @@ function StockTab() {
         setDetalle(null);
     }
 
-    // Autocompletado predictivo
-    function renderAutoComplete(options, value, onChange, placeholder) {
-        const filteredOptions = options.filter(opt => opt.toUpperCase().includes(value.trim().toUpperCase()));
-        return (
-            <div className="autocomplete">
-                <input
-                    type="text"
-                    value={value}
-                 onChange={e => onChange(e.target.value)}
-                    placeholder={placeholder}
-                    className="filter-input"
-                />
-                {value && (
-                    <ul className="autocomplete-list">
-                        {filteredOptions.slice(0,8).map(opt => (
-                            <li key={opt} onClick={() => onChange(opt)}>{opt}</li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-        );
+    function FilterSelectInput({ options, value, onChange, placeholder }) {
+      const [input, setInput] = useState(value || "");
+      const filteredOptions = options.filter(opt =>
+        opt && opt.toUpperCase().includes(input.trim().toUpperCase())
+      );
+      return (
+        <div className="filter-combo">
+          <input
+            className="filter-input"
+            type="text"
+            value={input}
+            onChange={e => {
+              setInput(e.target.value);
+              onChange(e.target.value);
+            }}
+            placeholder={placeholder}
+            list={placeholder + "-list"}
+            autoComplete="off"
+          />
+          <datalist id={placeholder + "-list"}>
+            {filteredOptions.map(opt => (
+              <option key={opt} value={opt} />
+            ))}
+          </datalist>
+        </div>
+      );
     }
 
     return (
         <div className="main-container">
             <div className="filters filters-modern">
-                {renderAutoComplete(departamentos, filtros.departamento, val => setFiltros(f => ({...f, departamento: val, localidad:"", barrio:""})), "Departamento")}
-                {renderAutoComplete(localidades, filtros.localidad, val => setFiltros(f => ({...f, localidad: val, barrio:""})), "Localidad")}
-                {renderAutoComplete(barrios, filtros.barrio, val => setFiltros(f => ({...f, barrio: val})), "Barrio")}
-                {renderAutoComplete(estados, filtros.estado, val => setFiltros(f => ({...f, estado: val})), "Estado")}
-                {renderAutoComplete(escribanos, filtros.escribano, val => setFiltros(f => ({...f, escribano: val})), "Escribano Designado")}
+              <FilterSelectInput
+                options={departamentos}
+                value={filtros.departamento}
+                onChange={val => setFiltros(f => ({ ...f, departamento: val, localidad: "", barrio: "" }))}
+                placeholder="Departamento"
+              />
+              <FilterSelectInput
+                options={localidades}
+                value={filtros.localidad}
+                onChange={val => setFiltros(f => ({ ...f, localidad: val, barrio: "" }))}
+                placeholder="Localidad"
+              />
+              <FilterSelectInput
+                options={barrios}
+                value={filtros.barrio}
+                onChange={val => setFiltros(f => ({ ...f, barrio: val }))}
+                placeholder="Barrio"
+              />
+              <FilterSelectInput
+                options={estados}
+                value={filtros.estado}
+                onChange={val => setFiltros(f => ({ ...f, estado: val }))}
+                placeholder="Estado"
+              />
+              <FilterSelectInput
+                options={escribanos}
+                value={filtros.escribano}
+                onChange={val => setFiltros(f => ({ ...f, escribano: val }))}
+                placeholder="Escribano Designado"
+              />
             </div>
             {loading && <p>Cargando datos...</p>}
             {error && <p style={{color:'red'}}>{error}</p>}
