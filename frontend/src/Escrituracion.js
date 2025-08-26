@@ -91,12 +91,14 @@ const Escrituracion = () => {
 
   // Aplicar filtros
   useEffect(() => {
-    let filtered = [...data];
-    if (departamento !== "Todos") filtered = filtered.filter(item => item.Departamento === departamento);
-    if (localidad !== "Todos") filtered = filtered.filter(item => item.Localidad === localidad);
-    if (barrio !== "Todos") filtered = filtered.filter(item => item.Barrio === barrio);
-    if (estado !== "Todos") filtered = filtered.filter(item => item.Estado === estado);
-    if (dni) filtered = filtered.filter(item => item.DNI && item.DNI.toString().includes(dni));
+    let filtered = data.filter(item => {
+      if (departamento !== "Todos" && item.Departamento.trim().toUpperCase() !== departamento.trim().toUpperCase()) return false;
+      if (localidad !== "Todos" && item.Localidad.trim().toUpperCase() !== localidad.trim().toUpperCase()) return false;
+      if (barrio !== "Todos" && item.Barrio.trim().toUpperCase() !== barrio.trim().toUpperCase()) return false;
+      if (estado !== "Todos" && item.Estado.trim().toUpperCase() !== estado.trim().toUpperCase()) return false;
+      if (dni && (!item.DNI || !item.DNI.toString().includes(dni))) return false;
+      return true;
+    });
     setFilteredData(filtered);
     // Reiniciar paginación al cambiar filtros
     setPageIngresoSorteo(1);

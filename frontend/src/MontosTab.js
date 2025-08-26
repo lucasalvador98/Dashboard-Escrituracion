@@ -33,8 +33,10 @@ function MontosTab() {
 
   // Filtrar datos
   let filtered = data.filter(item => {
-    if (filtros.departamento !== "Todos" && item.Departamento !== filtros.departamento) return false;
-    if (filtros.localidad !== "Todos" && item.Localidad !== filtros.localidad) return false;
+    if (filtros.departamento !== "Todos" && item.Departamento.trim().toUpperCase() !== filtros.departamento.trim().toUpperCase()) return false;
+    if (filtros.localidad !== "Todos" && item.Localidad.trim().toUpperCase() !== filtros.localidad.trim().toUpperCase()) return false;
+    if (filtros.barrio !== "Todos" && item.Barrio.trim().toUpperCase() !== filtros.barrio.trim().toUpperCase()) return false;
+    if (filtros.estado !== "Todos" && item.Estado.trim().toUpperCase() !== filtros.estado.trim().toUpperCase()) return false;
     return true;
   });
 
