@@ -8,11 +8,11 @@ export default function Sidebar({ active, onSelect, onPrev, onNext, escriSubInde
   ];
 
   const escrituracionSubTabs = [
-    "Ingreso Colegio vs Sorteo",
-    "Sorteo vs Aceptación",
-    "Aceptación vs Firma",
-    "Firma vs Ingreso Diario",
-    "Ingreso Diario vs Testimonio"
+    "Diferencia Ingreso y Sorteo",
+    "Diferencia Sorteo y Aceptación",
+    "Diferencia Aceptación y Firma",
+    "Diferencia Firma e Ingreso Diario",
+    "Diferencia Ingreso Diario y Testimonio"
   ];
 
   const Icon = ({ name }) => {
