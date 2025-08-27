@@ -150,14 +150,16 @@ const Escrituracion = () => {
           </thead>
           <tbody>
             {paginatedData.map((item, index) => {
-              const diferencia = item[columna];
-              let rowClass = "";
-              if (diferencia === "N/A") rowClass = "gray";
-              else if (Number(diferencia) <= 3) rowClass = "green";
-              else if (Number(diferencia) <= 7) rowClass = "yellow";
-              else rowClass = "red";
-              return (
-                <tr key={index} className={rowClass}>
+              // key estable: preferir item.id si existe, sino componerlo con campos únicos (DNI + nombres + fechas)
+              const stableKey = item.id ?? `${item.DNI || "noDNI"}-${(item.Beneficiario || "").toString().replace(/\s+/g, "_").slice(0,40)}-${String(item[fecha1] || "")}-${String(item[fecha2] || "")}-${index}`;
+               const diferencia = item[columna];
+               let rowClass = "";
+               if (diferencia === "N/A") rowClass = "gray";
+               else if (Number(diferencia) <= 3) rowClass = "green";
+               else if (Number(diferencia) <= 7) rowClass = "yellow";
+               else rowClass = "red";
+               return (
+                <tr key={stableKey} className={rowClass}>
                   <td>{item.Departamento}</td>
                   <td>{item.Localidad}</td>
                   <td>{item.Barrio}</td>
@@ -177,15 +179,14 @@ const Escrituracion = () => {
   };
 
   return (
-    <div className="main-container">
-      {/* filtros en cascada (selects no editables) */}
-      <SelectFilters data={processedData} filters={filters} setFilters={setFilters} />
-
-      {/* componentes nuevos debajo de los filtros */}
-      <div className="new-components" style={{ marginBottom: 12 }}>
-        <Semaforo data={processedData} onSelectEstado={e => setFilters({ estado: e || "Todos" })} activeEstado={filters.estado} />
-        {/* Aquí puedes añadir otros componentes nuevos bajo los filtros */}
-      </div>
+    <>
+       {/* filtros en cascada (selects no editables) */}
+       <SelectFilters data={processedData} filters={filters} setFilters={setFilters} />
+       {/* componentes nuevos debajo de los filtros */}
+       <div className="new-components" style={{ marginBottom: 12 }}>
+         <Semaforo data={processedData} onSelectEstado={e => setFilters({ estado: e || "Todos" })} activeEstado={filters.estado} />
+         {/* Aquí puedes añadir otros componentes nuevos bajo los filtros */}
+       </div>
 
       <div className="tabs" style={{ marginTop: 12, marginBottom: 12 }}>
         {TABLAS.map(tab => (
@@ -194,17 +195,21 @@ const Escrituracion = () => {
       </div>
 
       <div className="tab-content">
-        {TABLAS.map(tab => activeTab === tab.key && renderTable(
-          itemsForTab(tab.key),
-          tab.fecha1,
-          tab.fecha2,
-          tab.columna,
-          tab.label,
-          pagesMap[tab.pageState] ?? 1,
-          pagesMap[tab.setPageState] ?? (() => {})
-        ))}
+        {TABLAS.map(tab => activeTab === tab.key ? (
+          <div key={tab.key}>
+            {renderTable(
+              itemsForTab(tab.key),
+              tab.fecha1,
+              tab.fecha2,
+              tab.columna,
+              tab.label,
+              pagesMap[tab.pageState] ?? 1,
+              pagesMap[tab.setPageState] ?? (() => {})
+            )}
+          </div>
+        ) : null)}
       </div>
-    </div>
+    </>
   );
 };
 

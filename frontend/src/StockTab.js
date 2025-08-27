@@ -61,7 +61,7 @@ export default function StockTab() {
   }
 
   return (
-    <div className="main-container">
+    <>
       <SelectFilters data={data} filters={filters} setFilters={setFilters} />
 
       {loading && <p>Cargando datos...</p>}
@@ -164,6 +164,6 @@ export default function StockTab() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

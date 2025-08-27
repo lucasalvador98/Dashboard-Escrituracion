@@ -73,7 +73,7 @@ export default function MontosTab() {
   );
 
   return (
-    <div className="main-container">
+    <>
       <SelectFilters data={data} filters={filters} setFilters={setFilters} />
 
       {loading && <p>Cargando datos...</p>}
@@ -119,6 +119,6 @@ export default function MontosTab() {
           </table>
         </div>
       )}
-    </div>
+    </>
   );
 }
