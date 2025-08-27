@@ -516,6 +516,123 @@ h3 {
   transition: background-color 120ms linear;
 }
 
+/* Mejora visual para tarjetas de estado (En Trámite, Entregada, etc.) */
+.status-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+  margin: 12px 0 18px;
+}
+
+.status-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(20,40,60,0.04);
+  border: 1px solid rgba(20,40,60,0.03);
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  min-height: 68px;
+}
+
+.status-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 26px rgba(20,40,60,0.07);
+}
+
+.status-card.selected {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(31,119,180,0.12);
+  border: 1px solid rgba(31,119,180,0.18);
+}
+
+.status-card:focus {
+  outline: 3px solid rgba(31,119,180,0.12);
+  outline-offset: 2px;
+}
+
+.status-card .left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.status-card .label {
+  font-size: 0.85rem;
+  color: #3b556b;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-card .value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #12263a;
+  letter-spacing: 0.5px;
+}
+
+.status-card .meta {
+  font-size: 0.78rem;
+  color: #6e7b8c;
+}
+
+/* Small accent icon / badge on the right */
+.status-card .badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 66px;
+  padding-left: 6px;
+}
+
+/* colored accent stripe on left */
+.status-card::before {
+  content: "";
+  width: 6px;
+  height: 100%;
+  border-radius: 8px;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Variantes por tipo (ajustá colores si querés) */
+.status-card.variant-primary::before  { background: linear-gradient(180deg,#1f78b4,#17608f); }
+.status-card.variant-success::before  { background: linear-gradient(180deg,#2ca04a,#23883b); }
+.status-card.variant-warning::before  { background: linear-gradient(180deg,#f5a623,#e0781b); }
+.status-card.variant-danger::before   { background: linear-gradient(180deg,#e05054,#b6373a); }
+.status-card.variant-muted::before    { background: linear-gradient(180deg,#9aa6b2,#7f8b98); }
+.status-card.variant-info::before     { background: linear-gradient(180deg,#5bc0de,#3aa6cc); }
+
+/* pequeño porcentaje o icono dentro del badge */
+.status-card .badge .pct {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: inherit;
+}
+.status-card .badge svg { opacity: 0.95; }
+
+/* Ajustes de color según variante (texto) */
+.status-card.variant-success .value { color: #19672a; }
+.status-card.variant-warning .value { color: #7a4b00; }
+.status-card.variant-danger .value  { color: #6b1b1f; }
+.status-card.variant-primary .value { color: #0c3b57; }
+
+/* Responsive: apilar en móvil */
+@media (max-width: 600px) {
+  .status-cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .status-card { padding: 10px 12px; min-height: 60px; }
+  .status-card .value { font-size: 1.1rem; }
+}
+
 /* Responsividad */
 @media (max-width: 768px) {
   table {
@@ -636,14 +753,67 @@ h3 {
   font-weight:600;
 }
 
-/* responsive: minimizar ancho y adaptar layout */
-@media (max-width: 900px) {
-  .sidebar { width: 100%; flex-direction: row; align-items:center; padding:8px; gap:10px; position:relative; top:auto; border-radius:8px; }
-  .sidebar-brand { display:none; }
-  .sidebar-nav { flex-direction:row; gap:6px; }
-  .sidebar-btn { padding:8px 10px; font-size:13px; }
-  .sidebar-actions { margin-top:0; margin-left:auto; }
+/* Estilo para sub-pestañas dentro de la sidebar (Escrituración) */
+.sidebar-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  margin-left: 6px;
 }
+
+/* Botones de subpestaña */
+.sidebar-subbtn {
+  display: block;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #274860;
+  background: transparent;
+  border: 1px solid rgba(39,67,110,0.06);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 140ms ease, transform 80ms ease, border-color 140ms ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hover y foco */
+.sidebar-subbtn:hover,
+.sidebar-subbtn:focus {
+  background: rgba(31,119,180,0.05);
+  transform: translateY(-1px);
+  border-color: rgba(31,119,180,0.10);
+  outline: none;
+}
+
+/* Estado activo — hereda visual desde el botón principal, pero más sutil */
+.sidebar-subbtn.active {
+  background: linear-gradient(90deg, rgba(31,119,180,0.10), rgba(31,119,180,0.04));
+  border-color: rgba(31,119,180,0.16);
+  color: #0f3553;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(31,119,180,0.06);
+}
+
+/* Ajuste para cuando la sidebar está en vista móvil (fila horizontal) */
+@media (max-width: 900px) {
+  .sidebar-subnav {
+    flex-direction: row;
+    gap: 8px;
+    margin-left: 0;
+  }
+  .sidebar-subbtn {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
+
+/* Si querés que las subpestañas se vean más "compactas" dentro del bloque, usar:
+.sidebar-subnav { gap:4px; }
+.sidebar-subbtn { padding:6px 8px; font-size:12px; border-radius:6px; }
+*/
 
 /* Footer */
 .app-footer {

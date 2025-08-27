@@ -1,10 +1,18 @@
 import React from "react";
 
-export default function Sidebar({ active, onSelect, onPrev, onNext }) {
+export default function Sidebar({ active, onSelect, onPrev, onNext, escriSubIndex = 0, onChangeEscriSubIndex = () => {} }) {
   const items = [
     { key: "ESCRITURACION", label: "Inicio", icon: "home" },
     { key: "STOCK", label: "Stock", icon: "table" },
     { key: "MONTOS", label: "Montos", icon: "money" }
+  ];
+
+  const escrituracionSubTabs = [
+    "Ingreso Colegio vs Sorteo",
+    "Sorteo vs Aceptación",
+    "Aceptación vs Firma",
+    "Firma vs Ingreso Diario",
+    "Ingreso Diario vs Testimonio"
   ];
 
   const Icon = ({ name }) => {
@@ -46,15 +54,33 @@ export default function Sidebar({ active, onSelect, onPrev, onNext }) {
 
       <nav className="sidebar-nav" aria-label="Pestañas">
         {items.map(it => (
-          <button
-            key={it.key}
-            className={"sidebar-btn" + (active === it.key ? " active" : "")}
-            onClick={() => onSelect(it.key)}
-            aria-pressed={active === it.key}
-          >
-            <span className="icon"><Icon name={it.icon} /></span>
-            <span className="label">{it.label}</span>
-          </button>
+          <div key={it.key} style={{ marginBottom: it.key === "ESCRITURACION" ? 6 : 0 }}>
+            <button
+              className={"sidebar-btn" + (active === it.key ? " active" : "")}
+              onClick={() => onSelect(it.key)}
+              aria-pressed={active === it.key}
+            >
+              <span className="icon"><Icon name={it.icon} /></span>
+              <span className="label">{it.label}</span>
+            </button>
+
+            {/* si es Escrituración mostramos sub-pestañas anidadas y controladas desde acá */}
+            {it.key === "ESCRITURACION" && active === "ESCRITURACION" && (
+              <div className="sidebar-subnav" style={{ marginTop: 8, marginLeft: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                {escrituracionSubTabs.map((s, idx) => (
+                  <button
+                    key={`sub-${idx}`}
+                    className={"sidebar-subbtn" + (escriSubIndex === idx ? " active" : "")}
+                    onClick={() => onChangeEscriSubIndex(idx)}
+                    aria-pressed={escriSubIndex === idx}
+                    title={s}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </nav>
 

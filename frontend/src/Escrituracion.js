@@ -1,18 +1,17 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import "./styles.css";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
 import SelectFilters from "./components/SelectFilters";
-import Semaforo from "./components/Semaforo";
 
 const itemsPerPage = 15;
 
 const TABLAS = [
-  { key: "ingreso_sorteo", label: "Ingreso Colegio vs Sorteo", fecha1: "Fecha Ingreso Colegio de Escribanos", fecha2: "Fecha de Sorteo", columna: "diferencia_ingreso_sorteo", pageState: "pageIngresoSorteo", setPageState: "setPageIngresoSorteo" },
-  { key: "sorteo_aceptacion", label: "Sorteo vs Aceptación", fecha1: "Fecha de Sorteo", fecha2: "Fecha de Aceptacion", columna: "diferencia_sorteo_aceptacion", pageState: "pageSorteoAceptacion", setPageState: "setPageSorteoAceptacion" },
-  { key: "aceptacion_firma", label: "Aceptación vs Firma", fecha1: "Fecha de Aceptacion", fecha2: "Fecha de Firma", columna: "diferencia_aceptacion_firma", pageState: "pageAceptacionFirma", setPageState: "setPageAceptacionFirma" },
-  { key: "firma_ingreso", label: "Firma vs Ingreso Diario", fecha1: "Fecha de Firma", fecha2: "Fecha de Ingreso al Registro", columna: "diferencia_firma_ingreso", pageState: "pageFirmaIngreso", setPageState: "setPageFirmaIngreso" },
-  { key: "ingreso_testimonio", label: "Ingreso Diario vs Testimonio", fecha1: "Fecha de Ingreso al Registro", fecha2: "Fecha de envío PT digital", columna: "diferencia_ingreso_testimonio", pageState: "pageIngresoTestimonio", setPageState: "setPageIngresoTestimonio" }
+  { key: "ingreso_sorteo", label: "Diferencia entre Ingreso y Sorteo", fecha1: "Fecha Ingreso Colegio de Escribanos", fecha2: "Fecha de Sorteo", columna: "diferencia_ingreso_sorteo", pageState: "pageIngresoSorteo", setPageState: "setPageIngresoSorteo" },
+  { key: "sorteo_aceptacion", label: "Diferencia entre Sorteo y Aceptación", fecha1: "Fecha de Sorteo", fecha2: "Fecha de Aceptacion", columna: "diferencia_sorteo_aceptacion", pageState: "pageSorteoAceptacion", setPageState: "setPageSorteoAceptacion" },
+  { key: "aceptacion_firma", label: "Diferencia entre Aceptación y Firma", fecha1: "Fecha de Aceptacion", fecha2: "Fecha de Firma", columna: "diferencia_aceptacion_firma", pageState: "pageAceptacionFirma", setPageState: "setPageAceptacionFirma" },
+  { key: "firma_ingreso", label: "Diferencia entre Firma e Ingreso Diario", fecha1: "Fecha de Firma", fecha2: "Fecha de Ingreso al Registro", columna: "diferencia_firma_ingreso", pageState: "pageFirmaIngreso", setPageState: "setPageFirmaIngreso" },
+  { key: "ingreso_testimonio", label: "Diferencia entre Ingreso Diario y Testimonio", fecha1: "Fecha de Ingreso al Registro", fecha2: "Fecha de envío PT digital", columna: "diferencia_ingreso_testimonio", pageState: "pageIngresoTestimonio", setPageState: "setPageIngresoTestimonio" }
 ];
 
 function calcularDiferenciaDias(fecha1, fecha2) {
@@ -39,13 +38,15 @@ function generarReporte(arr) {
   });
 }
 
-const Escrituracion = () => {
+export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab = () => {}, diffTabLabels = null }) {
   const { data, loading, error } = useDataLoader("escrituracion");
   const { filters, setFilters, applyFilters, derivedOptions } = useFilters({ departamento: "Todos", localidad: "Todos", barrio: "Todos", estado: "Todos", escribano: "", dni: "" });
 
   const [sortCol, setSortCol] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [activeTab, setActiveTab] = useState(TABLAS[0].key);
+  const currentDiffIndex = typeof activeDiffTabIndex === "number" ? activeDiffTabIndex : 0;
+  const diffLabels = diffTabLabels && diffTabLabels.length ? diffTabLabels : TABLAS.map(t => t.label);
 
   // paginación por tabla
   const [pageIngresoSorteo, setPageIngresoSorteo] = useState(1);
@@ -75,6 +76,15 @@ const Escrituracion = () => {
     pageAceptacionFirma, setPageAceptacionFirma,
     pageFirmaIngreso, setPageFirmaIngreso,
     pageIngresoTestimonio, setPageIngresoTestimonio
+  };
+
+  // Reiniciar todas las paginaciones cuando se aplica un nuevo filtro
+  const resetAllPages = () => {
+    setPageIngresoSorteo(1);
+    setPageSorteoAceptacion(1);
+    setPageAceptacionFirma(1);
+    setPageFirmaIngreso(1);
+    setPageIngresoTestimonio(1);
   };
 
   const getSortIcon = (col) => sortCol !== col ? '' : (sortOrder === 'asc' ? ' ▲' : ' ▼');
@@ -178,39 +188,121 @@ const Escrituracion = () => {
     );
   };
 
+  // antes del return, dentro del componente funcional
+  const dataForStats = processedData ?? [];
+  const totalCount = dataForStats.length;
+  const counts = dataForStats.reduce((acc, it) => {
+    const estado = (it.Estado || it.estado || it.EstadoProceso || "En Trámite").toString();
+    acc[estado] = (acc[estado] || 0) + 1;
+    return acc;
+  }, {});
+
+  const statDefs = [
+    { key: "En Trámite", variant: "primary" },
+    { key: "Finalizada sin Entregar", variant: "success" },
+    { key: "Entregada", variant: "success" },
+    { key: "De Baja", variant: "warning" },
+    { key: "Hipotecada", variant: "danger" },
+    { key: "No Retiradas", variant: "muted" },
+  ];
+
+  // processedData existe en tu componente (datos ya preprocesados por filtros generales)
+  // Nuevo: datos filtrados aplicando el filtro activo (estado) — usado por la tabla
+  // const filteredByEstado = (data) => {
+  //   if (!filters || !filters.estado || filters.estado === "Todos") return data;
+  //   const estadoFiltro = String(filters.estado).trim();
+  //   return (data || []).filter(item => {
+  //     const estadoItem = String(item.Estado || item.estado || item.EstadoProceso || "").trim();
+  //     return estadoItem === estadoFiltro;
+  //   });
+  // };
+
+  // referencia para hacer scroll a la tabla al aplicar filtro
+  const tableRef = useRef(null);
+
+  // estado local inmediato para el filtro por "estado" (aplica al click de tarjeta)
+  // null = ninguno / mostrar todos
+  const [selectedEstadoFilter, setSelectedEstadoFilter] = useState(
+    (filters && filters.estado && filters.estado !== "Todos") ? filters.estado : null
+  );
+
+  // sincronizar si el filtro global cambia por otros controles (SelectFilters)
+  useEffect(() => {
+    const fromGlobal = (filters && filters.estado && filters.estado !== "Todos") ? filters.estado : null;
+    if (fromGlobal !== selectedEstadoFilter) setSelectedEstadoFilter(fromGlobal);
+  }, [filters && filters.estado]); // mantener sincronía con el hook de filtros
+
+  // itemsForTab já retorna datos filtrados por useFilters; además aplicamos selectedEstadoFilter
+  const itemsForTabFiltered = (tabKey) => {
+    const items = itemsForTab(tabKey) || [];
+    const estadoActivo = selectedEstadoFilter ?? ((filters && filters.estado && filters.estado !== "Todos") ? filters.estado : null);
+    if (!estadoActivo) return items;
+    const ef = String(estadoActivo).trim();
+    return items.filter(item => String(item.Estado || item.estado || item.EstadoProceso || "").trim() === ef);
+  };
+
   return (
     <>
-       {/* filtros en cascada (selects no editables) */}
-       <SelectFilters data={processedData} filters={filters} setFilters={setFilters} />
-       {/* componentes nuevos debajo de los filtros */}
-       <div className="new-components" style={{ marginBottom: 12 }}>
-         <Semaforo data={processedData} onSelectEstado={e => setFilters({ estado: e || "Todos" })} activeEstado={filters.estado} />
-         {/* Aquí puedes añadir otros componentes nuevos bajo los filtros */}
-       </div>
+      {/* filtros en cascada (selects no editables) */}
+      <SelectFilters data={processedData} filters={filters} setFilters={setFilters} />
 
-      <div className="tabs" style={{ marginTop: 12, marginBottom: 12 }}>
-        {TABLAS.map(tab => (
-          <button key={tab.key} className={activeTab === tab.key ? "tab-active" : "tab"} onClick={() => setActiveTab(tab.key)}>{tab.label}</button>
-        ))}
+      {/* Tarjetas de estado (ahora actúan como filtros) */}
+      <div className="status-cards" style={{ marginTop: 12 }}>
+        {statDefs.map(s => {
+          const count = counts[s.key] || 0;
+          const pct = totalCount ? Math.round((count / totalCount) * 100) : 0;
+          const isActive = (selectedEstadoFilter ?? (filters.estado && filters.estado !== "Todos" ? filters.estado : null)) === s.key;
+
+          const toggleEstado = () => {
+            // calcular nuevo estado y actualizar primero el filtro global
+            const nuevoSel = (selectedEstadoFilter === s.key) ? null : s.key;
+            // actualizar filtro global para que SelectFilters refleje el cambio inmediatamente
+            setFilters(prev => ({ ...prev, estado: nuevoSel ? nuevoSel : "Todos" }));
+            // luego actualizamos el estado local para la UI inmediata
+            setSelectedEstadoFilter(nuevoSel);
+            resetAllPages();
+          };
+
+          return (
+            <div
+              key={s.key}
+              role="button"
+              tabIndex={0}
+              className={`status-card variant-${s.variant} ${isActive ? "selected" : ""}`}
+              style={{ cursor: "pointer" }}
+              onClick={toggleEstado}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleEstado(); } }}
+              aria-pressed={isActive}
+            >
+              <div className="left">
+                <div className="label">{s.key}</div>
+                <div className="value">{count.toLocaleString()}</div>
+                <div className="meta">{pct}% del total</div>
+              </div>
+              <div className="badge">
+                <div className="pct">{pct}%</div>
+              </div>
+            </div>
+          );
+        })}
       </div>
+      {/* Eliminado Semaforo embebido para evitar duplicados de tarjetas */}
 
-      <div className="tab-content">
-        {TABLAS.map(tab => activeTab === tab.key ? (
-          <div key={tab.key}>
-            {renderTable(
-              itemsForTab(tab.key),
-              tab.fecha1,
-              tab.fecha2,
-              tab.columna,
-              tab.label,
-              pagesMap[tab.pageState] ?? 1,
-              pagesMap[tab.setPageState] ?? (() => {})
-            )}
-          </div>
-        ) : null)}
+      {/* NOTE: las sub-pestañas de diferencia ahora se muestran en la Sidebar */}
+      <div className="tab-content" ref={tableRef}>
+        {(() => {
+          const tab = TABLAS[activeDiffTabIndex] || TABLAS[0];
+          return renderTable(
+            itemsForTabFiltered(tab.key),
+            tab.fecha1,
+            tab.fecha2,
+            tab.columna,
+            tab.label,
+            pagesMap[tab.pageState] ?? 1,
+            pagesMap[tab.setPageState] ?? (() => {})
+          );
+        })()}
       </div>
     </>
   );
 };
-
-export default Escrituracion;
