@@ -116,16 +116,18 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
     );
   };
 
-  const renderTable = (d, fecha1, fecha2, columna, titulo, page, setPage) => {
-    let sortedData = [...d];
+  const renderTable = (data = [], fecha1, fecha2, columna, titulo, currentPage = 1, setPage = () => {}) => {
+    let sortedData = [...data];
     if (sortCol) {
       sortedData.sort((a, b) => {
         if (a[sortCol] == null) return 1;
         if (b[sortCol] == null) return -1;
+        // ordenar por la columna de diferencia (numérica)
         if (sortCol === columna) {
           let va = Number(a[sortCol]); let vb = Number(b[sortCol]);
           return sortOrder === 'asc' ? va - vb : vb - va;
         }
+        // ordenar por fechas (las claves son las mismas que los headers)
         if (sortCol === fecha1 || sortCol === fecha2) {
           let va = new Date(a[sortCol]); let vb = new Date(b[sortCol]);
           return sortOrder === 'asc' ? va - vb : vb - va;
@@ -140,40 +142,65 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
     }
 
     const totalPages = Math.max(1, Math.ceil(sortedData.length / itemsPerPage));
-    const paginatedData = getPaginated(sortedData, page);
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    const paginatedData = getPaginated(sortedData, safePage);
+
+    // helper para mostrar icono y aria-sort
+    const headerCell = (labelKey) => {
+      const active = sortCol === labelKey;
+      const aria = active ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none';
+      return { labelKey, active, aria, icon: getSortIcon(labelKey) };
+    };
+
+    const hDepartamento = headerCell("Departamento");
+    const hLocalidad   = headerCell("Localidad");
+    const hBarrio      = headerCell("Barrio");
+    const hBeneficiario= headerCell("Beneficiario");
+    const hEscribano   = headerCell("Escribano");
+    const hEstado      = headerCell("Estado");
+    const hDNI         = headerCell("DNI");
+    const hFecha1      = headerCell(fecha1);
+    const hFecha2      = headerCell(fecha2);
+    const hDiferencia  = headerCell(columna);
 
     return (
-      <div>
-        <h3>{titulo} ({sortedData.length})</h3>
+      <div className="table-wrap">
         <table className="data-table">
           <thead>
             <tr>
-              <th>Departamento</th>
-              <th>Localidad</th>
-              <th>Barrio</th>
-              <th>Beneficiario</th>
-              <th>DNI</th>
-              <th onClick={()=>handleSort(fecha1)} style={{cursor:'pointer'}}>{fecha1}{getSortIcon(fecha1)}</th>
-              <th onClick={()=>handleSort(fecha2)} style={{cursor:'pointer'}}>{fecha2}{getSortIcon(fecha2)}</th>
-              <th onClick={()=>handleSort(columna)} style={{cursor:'pointer'}}>Diferencia de días {getSortIcon(columna)}</th>
+              <th role="button" aria-sort={hDepartamento.aria} onClick={() => { handleSort("Departamento"); setPage(1); }} style={{cursor:"pointer"}}>Departamento{hDepartamento.icon}</th>
+              <th role="button" aria-sort={hLocalidad.aria} onClick={() => { handleSort("Localidad"); setPage(1); }} style={{cursor:"pointer"}}>Localidad{hLocalidad.icon}</th>
+              <th role="button" aria-sort={hBarrio.aria} onClick={() => { handleSort("Barrio"); setPage(1); }} style={{cursor:"pointer"}}>Barrio{hBarrio.icon}</th>
+              <th role="button" aria-sort={hBeneficiario.aria} onClick={() => { handleSort("Beneficiario"); setPage(1); }} style={{cursor:"pointer"}}>Beneficiario{hBeneficiario.icon}</th>
+              <th role="button" aria-sort={hEscribano.aria} onClick={() => { handleSort("Escribano"); setPage(1); }} style={{cursor:"pointer"}}>Escribano{hEscribano.icon}</th>
+              <th role="button" aria-sort={hEstado.aria} onClick={() => { handleSort("Estado"); setPage(1); }} style={{cursor:"pointer"}}>Estado{hEstado.icon}</th>
+              <th role="button" aria-sort={hDNI.aria} onClick={() => { handleSort("DNI"); setPage(1); }} style={{cursor:"pointer"}}>DNI{hDNI.icon}</th>
+              <th role="button" aria-sort={hFecha1.aria} onClick={() => { handleSort(fecha1); setPage(1); }} style={{cursor:"pointer"}}>{fecha1}{hFecha1.icon}</th>
+              <th role="button" aria-sort={hFecha2.aria} onClick={() => { handleSort(fecha2); setPage(1); }} style={{cursor:"pointer"}}>{fecha2}{hFecha2.icon}</th>
+              <th role="button" aria-sort={hDiferencia.aria} onClick={() => { handleSort(columna); setPage(1); }} style={{cursor:"pointer"}}>Diferencia de días{hDiferencia.icon}</th>
             </tr>
           </thead>
           <tbody>
             {paginatedData.map((item, index) => {
-              // key estable: preferir item.id si existe, sino componerlo con campos únicos (DNI + nombres + fechas)
-              const stableKey = item.id ?? `${item.DNI || "noDNI"}-${(item.Beneficiario || "").toString().replace(/\s+/g, "_").slice(0,40)}-${String(item[fecha1] || "")}-${String(item[fecha2] || "")}-${index}`;
-               const diferencia = item[columna];
-               let rowClass = "";
-               if (diferencia === "N/A") rowClass = "gray";
-               else if (Number(diferencia) <= 3) rowClass = "green";
-               else if (Number(diferencia) <= 7) rowClass = "yellow";
-               else rowClass = "red";
-               return (
+              const stableKey = item.id ?? `${item.DNI || "noDNI"}-${(item.Beneficiario || "").toString().slice(0,40)}-${(safePage-1)*itemsPerPage + index}`;
+              const diferencia = item[columna];
+              let rowClass = "";
+              if (diferencia === "N/A") rowClass = "gray";
+              else if (Number(diferencia) <= 3) rowClass = "green";
+              else if (Number(diferencia) <= 7) rowClass = "yellow";
+              else rowClass = "red";
+
+              const escribano = item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";
+              const estado = item.Estado ?? item.estado ?? "";
+
+              return (
                 <tr key={stableKey} className={rowClass}>
                   <td>{item.Departamento}</td>
                   <td>{item.Localidad}</td>
                   <td>{item.Barrio}</td>
                   <td>{item.Beneficiario}</td>
+                  <td>{escribano}</td>
+                  <td>{estado}</td>
                   <td>{item.DNI}</td>
                   <td>{item[fecha1]}</td>
                   <td>{item[fecha2]}</td>
@@ -183,7 +210,7 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
             })}
           </tbody>
         </table>
-        {renderPagination(page, setPage, totalPages)}
+        {renderPagination(safePage, setPage, totalPages)}
       </div>
     );
   };
@@ -206,16 +233,7 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
     { key: "No Retiradas", variant: "muted" },
   ];
 
-  // processedData existe en tu componente (datos ya preprocesados por filtros generales)
-  // Nuevo: datos filtrados aplicando el filtro activo (estado) — usado por la tabla
-  // const filteredByEstado = (data) => {
-  //   if (!filters || !filters.estado || filters.estado === "Todos") return data;
-  //   const estadoFiltro = String(filters.estado).trim();
-  //   return (data || []).filter(item => {
-  //     const estadoItem = String(item.Estado || item.estado || item.EstadoProceso || "").trim();
-  //     return estadoItem === estadoFiltro;
-  //   });
-  // };
+
 
   // referencia para hacer scroll a la tabla al aplicar filtro
   const tableRef = useRef(null);
@@ -230,7 +248,7 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
   useEffect(() => {
     const fromGlobal = (filters && filters.estado && filters.estado !== "Todos") ? filters.estado : null;
     if (fromGlobal !== selectedEstadoFilter) setSelectedEstadoFilter(fromGlobal);
-  }, [filters && filters.estado]); // mantener sincronía con el hook de filtros
+  }, [filters.estado]); // mantener sincronía con el hook de filtros
 
   // itemsForTab já retorna datos filtrados por useFilters; además aplicamos selectedEstadoFilter
   const itemsForTabFiltered = (tabKey) => {
@@ -254,12 +272,16 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
           const isActive = (selectedEstadoFilter ?? (filters.estado && filters.estado !== "Todos" ? filters.estado : null)) === s.key;
 
           const toggleEstado = () => {
-            // calcular nuevo estado y actualizar primero el filtro global
             const nuevoSel = (selectedEstadoFilter === s.key) ? null : s.key;
-            // actualizar filtro global para que SelectFilters refleje el cambio inmediatamente
-            setFilters(prev => ({ ...prev, estado: nuevoSel ? nuevoSel : "Todos" }));
-            // luego actualizamos el estado local para la UI inmediata
+
+            // Actualizamos el objeto de filtros directamente para que SelectFilters reciba
+            // el nuevo value inmediatamente y se sincronice visualmente.
+            setFilters({ ...filters, estado: nuevoSel ? nuevoSel : "Todos" });
+
+            // Estado local para la UI inmediata (tarjetas)
             setSelectedEstadoFilter(nuevoSel);
+
+            // Reiniciar paginaciones
             resetAllPages();
           };
 
