@@ -14,7 +14,7 @@ app = FastAPI()
 # Habilitar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # O especifica ["http://5.161.118.67:8506"]
+    allow_origins=["https://reporte-escrituracion.duckdns.org", "http://localhost:3000"],  # Agrega tu dominio de producción
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
