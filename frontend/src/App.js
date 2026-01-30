@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import "./index.css";
 import Sidebar from "./components/Sidebar";
 import Escrituracion from "./Escrituracion";
 import StockTab from "./StockTab";
