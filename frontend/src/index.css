@@ -88,6 +88,10 @@ body {
 }
 
 /* Tablas */
+.table-wrap {
+  @apply w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6;
+}
+
 .data-table {
   @apply w-full border-collapse;
 }
@@ -131,25 +135,91 @@ body {
 
 /* Filtros */
 .filter-section {
-  @apply bg-white rounded-lg shadow-sm p-4 mb-4;
+  @apply w-full bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] p-3 mb-6 border border-gray-100;
 }
 
 .filter-group {
-  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+  @apply flex flex-row flex-wrap gap-4 items-end;
 }
 
 .filter-item {
-  @apply flex flex-col gap-2;
+  @apply flex flex-col gap-1.5 min-w-[165px] flex-1 lg:flex-none;
 }
 
 .filter-item label {
-  @apply text-sm font-medium text-gray-700;
+  @apply text-[11px] font-bold text-gray-500 uppercase tracking-widest ml-1 mb-0.5;
 }
 
 .filter-item input,
 .filter-item select {
-  @apply px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500;
+  @apply w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50/50 hover:bg-white transition-all h-10 appearance-none shadow-sm;
 }
+
+.filter-item select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1rem;
+  padding-right: 2rem;
+}
+
+/* Tarjetas de estado */
+.status-cards {
+  @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8;
+}
+
+.status-card {
+  @apply bg-white p-5 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-gray-100 flex flex-col gap-1 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer;
+}
+
+.status-card.selected {
+  @apply ring-2 ring-blue-500 border-transparent shadow-blue-100/50 bg-blue-50/30;
+}
+
+.status-card .label {
+  @apply text-[11px] font-bold text-gray-400 uppercase truncate tracking-wider;
+}
+
+.status-card .value {
+  @apply text-3xl font-black text-gray-800 tracking-tight;
+}
+
+.status-card .meta {
+  @apply text-[10px] text-gray-400 font-semibold bg-gray-50 px-2 py-0.5 rounded-full w-fit mt-1;
+}
+
+.status-card:hover .value {
+  @apply text-blue-600;
+}
+
+
+/* Semaforización de Filas */
+.data-table tbody tr.green { @apply bg-green-50/70 hover:bg-green-100/90; }
+.data-table tbody tr.yellow { @apply bg-yellow-50/70 hover:bg-yellow-100/90; }
+.data-table tbody tr.red { @apply bg-red-50/70 hover:bg-red-100/90; }
+.data-table tbody tr.gray { @apply bg-gray-50/70 hover:bg-gray-100/90; }
+
+.semaforo-badge {
+  @apply inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold min-w-[3rem] shadow-sm;
+}
+
+.semaforo-badge.green { @apply bg-green-200 text-green-800 border border-green-300; }
+.semaforo-badge.yellow { @apply bg-yellow-200 text-yellow-800 border border-yellow-300; }
+.semaforo-badge.red { @apply bg-red-200 text-red-800 border border-red-300; }
+.semaforo-badge.gray { @apply bg-gray-200 text-gray-800 border border-gray-300; }
+
+.semaforo-legend {
+  @apply flex gap-4 p-3 bg-white border border-gray-200 rounded-lg mb-4 text-xs font-medium text-gray-600;
+}
+
+.legend-item {
+  @apply flex items-center gap-2;
+}
+
+.legend-color {
+  @apply w-3 h-3 rounded-full;
+}
+
 
 /* Botones */
 .btn {
@@ -207,22 +277,109 @@ body {
   @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4;
 }
 
+/* Paginación */
+.pagination {
+  @apply flex justify-center items-center gap-1.5 mt-6 mb-4;
+}
+
+.pagination button {
+  @apply min-w-[32px] h-8 flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.pagination button.active {
+  @apply bg-blue-600 text-white border-blue-600 shadow-sm;
+}
+
+.pagination .ellipsis {
+  @apply px-2 text-gray-400 font-medium;
+}
+
 /* Transiciones */
 .transition-smooth {
   @apply transition-all duration-300 ease-in-out;
 }
 
-/* Responsive */
+/* Stock Table Styles */
+.stock-table {
+  @apply w-full border-collapse bg-white rounded-lg overflow-hidden shadow-sm;
+}
+
+.stock-table th {
+  @apply bg-blue-600 text-white p-3 text-left text-xs font-bold uppercase tracking-wider;
+}
+
+.stock-table td {
+  @apply p-3 text-sm text-gray-700 border-b border-gray-100;
+}
+
+.row-depto {
+  @apply bg-blue-50/50 font-bold text-blue-900 cursor-pointer hover:bg-blue-100 transition-colors;
+}
+
+.row-loc {
+  @apply bg-gray-50 font-semibold text-gray-800 cursor-pointer hover:bg-gray-100 transition-colors;
+}
+
+.btn-detalle {
+  @apply bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors shadow-sm;
+}
 @media (max-width: 768px) {
   .app-root {
-    @apply flex-col;
+    @apply flex-col h-auto overflow-y-auto;
   }
 
   .app-sidebar {
-    @apply w-full h-auto border-r-0 border-b;
+    @apply w-full h-auto border-r-0 border-b relative;
+  }
+
+  .app-content {
+    @apply h-auto overflow-visible flex-none;
+  }
+
+  .app-main {
+    @apply p-4 h-auto overflow-visible;
   }
 
   .filter-group {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end;
+  }
+
+  .filter-item {
+    @apply min-w-0 w-full flex-none;
+  }
+
+  .status-cards {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-3;
+  }
+
+  .status-card .value {
+    @apply text-xl;
+  }
+
+  .data-table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap {
+    @apply border-0 shadow-none overflow-visible;
+  }
+
+  .nav-subtabs {
+    @apply flex-wrap justify-center;
+  }
+}
+
+
+@media (max-width: 480px) {
+  .filter-group {
+    @apply grid-cols-1;
+  }
+
+  .status-cards {
     @apply grid-cols-1;
   }
 }
+

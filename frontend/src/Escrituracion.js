@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import "./styles.css";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
 import SelectFilters from "./components/SelectFilters";
@@ -164,54 +163,79 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
     const hDiferencia  = headerCell(columna);
 
     return (
-      <div className="table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th role="button" aria-sort={hDepartamento.aria} onClick={() => { handleSort("Departamento"); setPage(1); }} style={{cursor:"pointer"}}>Departamento{hDepartamento.icon}</th>
-              <th role="button" aria-sort={hLocalidad.aria} onClick={() => { handleSort("Localidad"); setPage(1); }} style={{cursor:"pointer"}}>Localidad{hLocalidad.icon}</th>
-              <th role="button" aria-sort={hBarrio.aria} onClick={() => { handleSort("Barrio"); setPage(1); }} style={{cursor:"pointer"}}>Barrio{hBarrio.icon}</th>
-              <th role="button" aria-sort={hBeneficiario.aria} onClick={() => { handleSort("Beneficiario"); setPage(1); }} style={{cursor:"pointer"}}>Beneficiario{hBeneficiario.icon}</th>
-              <th role="button" aria-sort={hEscribano.aria} onClick={() => { handleSort("Escribano"); setPage(1); }} style={{cursor:"pointer"}}>Escribano{hEscribano.icon}</th>
-              <th role="button" aria-sort={hEstado.aria} onClick={() => { handleSort("Estado"); setPage(1); }} style={{cursor:"pointer"}}>Estado{hEstado.icon}</th>
-              <th role="button" aria-sort={hDNI.aria} onClick={() => { handleSort("DNI"); setPage(1); }} style={{cursor:"pointer"}}>DNI{hDNI.icon}</th>
-              <th role="button" aria-sort={hFecha1.aria} onClick={() => { handleSort(fecha1); setPage(1); }} style={{cursor:"pointer"}}>{fecha1}{hFecha1.icon}</th>
-              <th role="button" aria-sort={hFecha2.aria} onClick={() => { handleSort(fecha2); setPage(1); }} style={{cursor:"pointer"}}>{fecha2}{hFecha2.icon}</th>
-              <th role="button" aria-sort={hDiferencia.aria} onClick={() => { handleSort(columna); setPage(1); }} style={{cursor:"pointer"}}>Diferencia de días{hDiferencia.icon}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedData.map((item, index) => {
-              const stableKey = item.id ?? `${item.DNI || "noDNI"}-${(item.Beneficiario || "").toString().slice(0,40)}-${(safePage-1)*itemsPerPage + index}`;
-              const diferencia = item[columna];
-              let rowClass = "";
-              if (diferencia === "N/A") rowClass = "gray";
-              else if (Number(diferencia) <= 3) rowClass = "green";
-              else if (Number(diferencia) <= 7) rowClass = "yellow";
-              else rowClass = "red";
+      <>
+        <div className="semaforo-legend">
+          <div className="legend-item">
+            <span className="legend-color bg-green-500"></span>
+            <span>0 - 3 días (Excelente)</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-color bg-yellow-500"></span>
+            <span>4 - 7 días (Alerta)</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-color bg-red-500"></span>
+            <span>+7 días (Demora)</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-color bg-gray-400"></span>
+            <span>Sin datos</span>
+          </div>
+        </div>
 
-              const escribano = item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";
-              const estado = item.Estado ?? item.estado ?? "";
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th role="button" aria-sort={hDepartamento.aria} onClick={() => { handleSort("Departamento"); setPage(1); }} style={{cursor:"pointer"}}>Departamento{hDepartamento.icon}</th>
+                <th role="button" aria-sort={hLocalidad.aria} onClick={() => { handleSort("Localidad"); setPage(1); }} style={{cursor:"pointer"}}>Localidad{hLocalidad.icon}</th>
+                <th role="button" aria-sort={hBarrio.aria} onClick={() => { handleSort("Barrio"); setPage(1); }} style={{cursor:"pointer"}}>Barrio{hBarrio.icon}</th>
+                <th role="button" aria-sort={hBeneficiario.aria} onClick={() => { handleSort("Beneficiario"); setPage(1); }} style={{cursor:"pointer"}}>Beneficiario{hBeneficiario.icon}</th>
+                <th role="button" aria-sort={hEscribano.aria} onClick={() => { handleSort("Escribano"); setPage(1); }} style={{cursor:"pointer"}}>Escribano{hEscribano.icon}</th>
+                <th role="button" aria-sort={hEstado.aria} onClick={() => { handleSort("Estado"); setPage(1); }} style={{cursor:"pointer"}}>Estado{hEstado.icon}</th>
+                <th role="button" aria-sort={hDNI.aria} onClick={() => { handleSort("DNI"); setPage(1); }} style={{cursor:"pointer"}}>DNI{hDNI.icon}</th>
+                <th role="button" aria-sort={hFecha1.aria} onClick={() => { handleSort(fecha1); setPage(1); }} style={{cursor:"pointer"}}>{fecha1}{hFecha1.icon}</th>
+                <th role="button" aria-sort={hFecha2.aria} onClick={() => { handleSort(fecha2); setPage(1); }} style={{cursor:"pointer"}}>{fecha2}{hFecha2.icon}</th>
+                <th role="button" aria-sort={hDiferencia.aria} onClick={() => { handleSort(columna); setPage(1); }} style={{cursor:"pointer"}}>Diferencia de días{hDiferencia.icon}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedData.map((item, index) => {
+                const stableKey = item.id ?? `${item.DNI || "noDNI"}-${(item.Beneficiario || "").toString().slice(0,40)}-${(safePage-1)*itemsPerPage + index}`;
+                const diferencia = item[columna];
+                let rowClass = "";
+                if (diferencia === "N/A") rowClass = "gray";
+                else if (Number(diferencia) <= 3) rowClass = "green";
+                else if (Number(diferencia) <= 7) rowClass = "yellow";
+                else rowClass = "red";
 
-              return (
-                <tr key={stableKey} className={rowClass}>
-                  <td>{item.Departamento}</td>
-                  <td>{item.Localidad}</td>
-                  <td>{item.Barrio}</td>
-                  <td>{item.Beneficiario}</td>
-                  <td>{escribano}</td>
-                  <td>{estado}</td>
-                  <td>{item.DNI}</td>
-                  <td>{item[fecha1]}</td>
-                  <td>{item[fecha2]}</td>
-                  <td>{diferencia}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                const escribano = item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";
+                const estado = item.Estado ?? item.estado ?? item.EstadoProceso ?? "";
+
+                return (
+                  <tr key={stableKey} className={rowClass}>
+                    <td>{item.Departamento}</td>
+                    <td>{item.Localidad}</td>
+                    <td>{item.Barrio}</td>
+                    <td>{item.Beneficiario}</td>
+                    <td>{escribano}</td>
+                    <td>{estado}</td>
+                    <td>{item.DNI}</td>
+                    <td>{item[fecha1]}</td>
+                    <td>{item[fecha2]}</td>
+                    <td>
+                      <span className={`semaforo-badge ${rowClass}`}>
+                        {diferencia}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
         {renderPagination(safePage, setPage, totalPages)}
-      </div>
+      </>
     );
   };
 
@@ -290,7 +314,7 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
               key={s.key}
               role="button"
               tabIndex={0}
-              className={`status-card variant-${s.variant} ${isActive ? "selected" : ""}`}
+              className={`status-card ${isActive ? "selected" : ""}`}
               style={{ cursor: "pointer" }}
               onClick={toggleEstado}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleEstado(); } }}
@@ -300,9 +324,6 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
                 <div className="label">{s.key}</div>
                 <div className="value">{count.toLocaleString()}</div>
                 <div className="meta">{pct}% del total</div>
-              </div>
-              <div className="badge">
-                <div className="pct">{pct}%</div>
               </div>
             </div>
           );

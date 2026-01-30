@@ -1,5 +1,4 @@
 import React, { useMemo } from "react";
-import "./styles.css";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
 import SelectFilters from "./components/SelectFilters";
