@@ -48,37 +48,50 @@ export default function Sidebar({ active, onSelect, onPrev, onNext, escriSubInde
   return (
     <aside className="app-sidebar flex flex-col" aria-label="Navegación principal">
       {/* Brand */}
-      <div className="px-6 py-6 border-b border-gray-200">
-        <div className="text-lg font-bold text-blue-600">Dashboard Escrituración</div>
+      <div className="px-8 py-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-white">
+              <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="currentColor" strokeWidth="2"/>
+              <path d="M7 7H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M7 12H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M7 17H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div className="text-sm font-black text-slate-800 uppercase tracking-tighter leading-tight">Dirección de</div>
+            <div className="text-sm font-black text-blue-600 uppercase tracking-tighter leading-tight">Tecnología</div>
+          </div>
+        </div>
       </div>
 
       {/* Navegación principal */}
-      <nav className="flex-1 px-4 py-4 space-y-2" aria-label="Pestañas">
+      <nav className="flex-1 px-4 py-2 space-y-1.5" aria-label="Pestañas">
         {items.map(it => (
-          <div key={it.key}>
+          <div key={it.key} className="px-2">
             <button
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
                 active === it.key
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-slate-900 text-white shadow-xl shadow-slate-200'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
               }`}
               onClick={() => onSelect(it.key)}
               aria-pressed={active === it.key}
             >
-              <span className="flex-shrink-0"><Icon name={it.icon} /></span>
-              <span className="text-sm font-medium">{it.label}</span>
+              <span className={`flex-shrink-0 ${active === it.key ? 'text-blue-400' : 'text-slate-400'}`}><Icon name={it.icon} /></span>
+              <span className="text-sm font-bold tracking-tight">{it.label}</span>
             </button>
 
             {/* Sub-pestañas de Escrituración */}
             {it.key === "ESCRITURACION" && active === "ESCRITURACION" && (
-              <div className="mt-2 ml-4 space-y-1">
+              <div className="mt-2 ml-4 pl-4 border-l-2 border-slate-100 space-y-1">
                 {escrituracionSubTabs.map((s, idx) => (
                   <button
                     key={`sub-${idx}`}
-                    className={`w-full text-left px-3 py-2 text-xs rounded transition-all truncate ${
+                    className={`w-full text-left px-3 py-2 text-[11px] rounded-lg transition-all truncate ${
                       escriSubIndex === idx
-                        ? 'bg-blue-100 text-blue-700 font-medium'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-blue-50 text-blue-700 font-bold'
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                     }`}
                     onClick={() => onChangeEscriSubIndex(idx)}
                     aria-pressed={escriSubIndex === idx}
@@ -94,32 +107,21 @@ export default function Sidebar({ active, onSelect, onPrev, onNext, escriSubInde
       </nav>
 
       {/* Acciones */}
-      <div className="border-t border-gray-200 p-4 flex gap-2 justify-center">
+      <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex gap-3 justify-center">
         <button
-          className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 shadow-sm transition-all"
           onClick={onPrev}
           title="Anterior"
-          aria-label="Anterior"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
 
         <button
-          className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 shadow-sm transition-all"
           onClick={onNext}
           title="Siguiente"
-          aria-label="Siguiente"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
-
-        <button
-          className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-          onClick={() => onSelect("ESCRITURACION")}
-          title="Ir al inicio"
-          aria-label="Inicio"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M3 10.5L12 4l9 6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 21V11.5h14V21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
       </div>
     </aside>
