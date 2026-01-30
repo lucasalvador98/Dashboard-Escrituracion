@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "./styles.css";
+import "./index.css";
 import Sidebar from "./components/Sidebar";
 import Escrituracion from "./Escrituracion";
 import StockTab from "./StockTab";
@@ -54,22 +54,26 @@ export default function App() {
         onChangeEscriSubIndex={setEscriSubIndex}
       />
 
-      <main className="content-area">
-        {activeTab === "ESCRITURACION" && (
-          <Escrituracion
-            activeDiffTabIndex={escriSubIndex}
-            onChangeDiffTab={setEscriSubIndex}
-            diffTabLabels={ESCRITURACION_SUBTABS}
-          />
-        )}
-        {activeTab === "STOCK" && <StockTab />}
-        {activeTab === "MONTOS" && <MontosTab />}
+      <div className="app-content">
+        <main className="app-main">
+          {activeTab === "ESCRITURACION" && (
+            <Escrituracion
+              activeDiffTabIndex={escriSubIndex}
+              onChangeDiffTab={setEscriSubIndex}
+              diffTabLabels={ESCRITURACION_SUBTABS}
+            />
+          )}
+          {activeTab === "STOCK" && <StockTab />}
+          {activeTab === "MONTOS" && <MontosTab />}
+        </main>
 
         <footer className="app-footer" role="contentinfo">
-          <div>Elaborado por Dirección de Tecnología</div>
-          <div>Ministerio de Desarrollo Social y Promoción del Empleo</div>
+          <div className="text-center space-y-1">
+            <div className="font-medium">Elaborado por Dirección de Tecnología</div>
+            <div className="text-xs text-gray-500">Ministerio de Desarrollo Social y Promoción del Empleo</div>
+          </div>
         </footer>
-      </main>
+      </div>
     </div>
   );
 }
