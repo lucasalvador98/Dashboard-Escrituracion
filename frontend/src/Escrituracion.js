@@ -13,6 +13,27 @@ const TABLAS = [
   { key: "ingreso_testimonio", label: "Diferencia entre Ingreso Diario y Testimonio", fecha1: "Fecha de Ingreso al Registro", fecha2: "Fecha de envío PT digital", columna: "diferencia_ingreso_testimonio", pageState: "pageIngresoTestimonio", setPageState: "setPageIngresoTestimonio" }
 ];
 
+// Plazos esperados por etapa (en días hábiles)
+const PLAZOS = {
+  diferencia_ingreso_sorteo: { esperado: 10, label: "10 días hábiles" },
+  diferencia_sorteo_aceptacion: { esperado: 5, label: "5 días" },
+  diferencia_aceptacion_firma: { esperado: 20, label: "20 días hábiles" },
+  diferencia_firma_ingreso: { esperado: 5, label: "5 días hábiles" },
+  diferencia_ingreso_testimonio: { esperado: 15, label: "15 días hábiles" },
+};
+
+function contarDiasHabiles(inicio, fin) {
+  let count = 0;
+  const current = new Date(inicio);
+  current.setDate(current.getDate() + 1);
+  while (current <= fin) {
+    const d = current.getDay();
+    if (d !== 0 && d !== 6) count++; // Lun-Vie
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
 function calcularDiferenciaDias(fecha1, fecha2) {
   if (!fecha1 || !fecha2 || fecha1 === "N/A" || fecha2 === "N/A") return "N/A";
   const parse = f => {
@@ -23,7 +44,7 @@ function calcularDiferenciaDias(fecha1, fecha2) {
   const date1 = parse(fecha1);
   const date2 = parse(fecha2);
   if (isNaN(date1) || isNaN(date2)) return "N/A";
-  return Math.floor((date2 - date1) / (1000 * 60 * 60 * 24));
+  return contarDiasHabiles(date1, date2);
 }
 
 function generarReporte(arr) {
@@ -116,6 +137,9 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
   };
 
   const renderTable = (data = [], fecha1, fecha2, columna, titulo, currentPage = 1, setPage = () => {}) => {
+    const plazo = PLAZOS[columna] || { esperado: 7, label: "7 días" };
+    const amarillo = Math.ceil(plazo.esperado * 1.3);
+
     let sortedData = [...data];
     if (sortCol) {
       sortedData.sort((a, b) => {
@@ -167,15 +191,15 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
         <div className="semaforo-legend">
           <div className="legend-item">
             <span className="legend-color bg-green-500"></span>
-            <span>0 - 3 días (Excelente)</span>
+            <span>Dentro del plazo ({plazo.label})</span>
           </div>
           <div className="legend-item">
             <span className="legend-color bg-yellow-500"></span>
-            <span>4 - 7 días (Alerta)</span>
+            <span>{plazo.esperado + 1} a {amarillo} días (Alerta)</span>
           </div>
           <div className="legend-item">
             <span className="legend-color bg-red-500"></span>
-            <span>+7 días (Demora)</span>
+            <span>+{amarillo} días (Demora)</span>
           </div>
           <div className="legend-item">
             <span className="legend-color bg-gray-400"></span>
@@ -205,8 +229,8 @@ export default function Escrituracion({ activeDiffTabIndex = 0, onChangeDiffTab 
                 const diferencia = item[columna];
                 let rowClass = "";
                 if (diferencia === "N/A") rowClass = "gray";
-                else if (Number(diferencia) <= 3) rowClass = "green";
-                else if (Number(diferencia) <= 7) rowClass = "yellow";
+                else if (Number(diferencia) <= plazo.esperado) rowClass = "green";
+                else if (Number(diferencia) <= amarillo) rowClass = "yellow";
                 else rowClass = "red";
 
                 const escribano = item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";

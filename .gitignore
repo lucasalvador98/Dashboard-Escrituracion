@@ -18,6 +18,9 @@ npm-debug.log*
 # VSCode
 .vscode/
 
+# AI / Editor config
+.atl/
+
 # Docker
 *.log
 docker-compose.override.yml

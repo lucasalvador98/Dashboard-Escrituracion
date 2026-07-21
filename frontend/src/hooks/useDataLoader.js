@@ -19,7 +19,7 @@ export default function useDataLoader(resource = "escrituracion", tryLimit = 100
       if (total && all.length < total) {
         const pageSize = all.length || 50;
         for (let offset = pageSize; all.length < total; offset += pageSize) {
-          const resp = await axios.get(`${API_URL}/${resource}?limit=${pageSize}&offset=${offset}`);
+          const resp = await axios.get(`${API_URL}/${resource}?limit=${pageSize}&skip=${offset}`);
           const chunk = Array.isArray(resp.data?.data) ? resp.data.data : Array.isArray(resp.data) ? resp.data : [];
           if (!chunk.length) break;
           all = all.concat(chunk);
