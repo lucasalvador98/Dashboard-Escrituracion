@@ -73,6 +73,7 @@ export default function Escrituracion() {
   const [sortCol, setSortCol] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [page, setPage] = useState(1);
+  const [intervalDetail, setIntervalDetail] = useState(null);
 
   // === Datos procesados ===
   const rawData = Array.isArray(data) ? data : [];
@@ -343,6 +344,8 @@ export default function Escrituracion() {
                             key={iv.key}
                             className={`diff-cell ${cls}`}
                             title={`${iv.fullLabel}\n${fechas}`}
+                            onClick={() => setIntervalDetail({ item, interval: iv })}
+                            style={{ cursor: 'pointer' }}
                           >
                             <span className="diff-badge">
                               {val !== "N/A" && val !== "" && val != null ? `${val}d` : "—"}
@@ -368,6 +371,82 @@ export default function Escrituracion() {
           {renderPagination()}
         </div>
       )}
+
+      {/* Modal detalle de fechas por intervalo */}
+      {intervalDetail && (() => {
+        const iv = intervalDetail.interval;
+        const item = intervalDetail.item;
+        const val = item[iv.key];
+        const cls = diffClass(val, iv.esperado);
+        const fecha1Val = item[iv.fecha1] || "—";
+        const fecha2Val = item[iv.fecha2] || "—";
+        return (
+          <div
+            className="modal-overlay"
+            onClick={() => setIntervalDetail(null)}
+          >
+            <div className="modal-card" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="modal-header">
+                <div>
+                  <h3 className="modal-title">{iv.fullLabel}</h3>
+                  <p className="modal-subtitle">
+                    {item.Beneficiario}{item.DNI ? ` — DNI ${item.DNI}` : ""}
+                  </p>
+                </div>
+                <button
+                  className="modal-close"
+                  onClick={() => setIntervalDetail(null)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="modal-body">
+                {/* Fechas */}
+                <div className="detail-dates-row">
+                  <div className="date-card">
+                    <div className="date-label">Desde</div>
+                    <div className="date-field">{iv.fecha1}</div>
+                    <div className="date-value">{fecha1Val}</div>
+                  </div>
+                  <div className="date-arrow">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                  </div>
+                  <div className="date-card">
+                    <div className="date-label">Hasta</div>
+                    <div className="date-field">{iv.fecha2}</div>
+                    <div className="date-value">{fecha2Val}</div>
+                  </div>
+                </div>
+
+                {/* Resultado */}
+                <div className="detail-result">
+                  <div className="result-label">Diferencia</div>
+                  <div className="result-value-row">
+                    <span className={`diff-badge ${cls}`} style={{ fontSize: '1rem', padding: '0.25rem 1rem' }}>
+                      {val !== "N/A" && val !== "" && val != null ? `${val} días hábiles` : "Sin datos"}
+                    </span>
+                    <span className="result-threshold">
+                      Plazo esperado: <strong>{iv.esperado} días</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Info adicional */}
+                <div className="detail-meta">
+                  <span>Departamento: {item.Departamento || "—"}</span>
+                  <span>Localidad: {item.Localidad || "—"}</span>
+                  <span>Barrio: {item.Barrio || "—"}</span>
+                  <span>Estado: {item.Estado || "—"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }
