@@ -60,21 +60,10 @@ export default function StockTab() {
   return (
     <div className="space-y-6">
       {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
         <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">
           Stock — Finalizadas
         </h2>
-        <button
-          onClick={() => downloadExcel(`${API_URL}/stock/exportar`, "Stock_General.xlsx")}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Descargar Excel
-        </button>
       </div>
 
       <SelectFilters data={finalizadas} filters={filters} setFilters={setFilters} />
@@ -95,7 +84,6 @@ export default function StockTab() {
                   <th>Finalizada sin Entregar</th>
                   <th>Entregada</th>
                   <th>Total</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -109,7 +97,7 @@ export default function StockTab() {
                         const items = Object.values(locs).flatMap(b => Object.values(b).flat());
                         const fin = items.filter(i => i.Estado === "Finalizada sin Entregar").length;
                         const ent = items.filter(i => i.Estado === "Entregada").length;
-                        return <><td>{fin}</td><td>{ent}</td><td>{items.length}</td><td></td></>;
+                        return <><td>{fin}</td><td>{ent}</td><td>{items.length}</td></>;
                       })()}
                     </tr>
 
@@ -123,7 +111,7 @@ export default function StockTab() {
                             const items = Object.values(barriosObj).flat();
                             const fin = items.filter(i => i.Estado === "Finalizada sin Entregar").length;
                             const ent = items.filter(i => i.Estado === "Entregada").length;
-                            return <><td>{fin}</td><td>{ent}</td><td>{items.length}</td><td></td></>;
+                            return <><td>{fin}</td><td>{ent}</td><td>{items.length}</td></>;
                           })()}
                         </tr>
 
@@ -140,27 +128,7 @@ export default function StockTab() {
                             {(() => {
                               const fin = items.filter(i => i.Estado === "Finalizada sin Entregar").length;
                               const ent = items.filter(i => i.Estado === "Entregada").length;
-                              return (
-                                <>
-                                  <td>{fin}</td>
-                                  <td>{ent}</td>
-                                  <td>{items.length}</td>
-                                  <td>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        downloadExcel(
-                                          `${API_URL}/stock/exportar?departamento=${encodeURIComponent(depto)}&localidad=${encodeURIComponent(loc)}&barrio=${encodeURIComponent(barrio)}`,
-                                          `Stock_${barrio.replace(/\s+/g, "_")}.xlsx`
-                                        );
-                                      }}
-                                      className="text-blue-600 hover:text-blue-800 text-xs font-semibold underline"
-                                    >
-                                      Descargar
-                                    </button>
-                                  </td>
-                                </>
-                              );
+                              return <><td>{fin}</td><td>{ent}</td><td>{items.length}</td></>;
                             })()}
                           </tr>
                         ))}
