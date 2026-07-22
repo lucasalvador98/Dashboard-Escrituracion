@@ -1,95 +1,119 @@
-import math
-import os
-import pandas as pd
+import io
 from pathlib import Path
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from openpyxl.utils import get_column_letter
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
-STOCK_FILE = DATA_DIR / "VILLA CARLOS PAZ (TU CASA TU ESCRITURA- ENTREGA) 08 07 26 (1).xlsx"
+MODELO_PATH = DATA_DIR / "VILLA CARLOS PAZ (TU CASA TU ESCRITURA- ENTREGA) 08 07 26 (1).xlsx"
 
 COLUMNS = [
-    "NRO",
-    "BARRIO",
-    "MZA",
-    "LOTE",
-    "APELLIDO_Y_NOMBRE",
-    "DNI",
-    "TELEFONO",
-    "COTITULAR_NOMBRE",
-    "COTITULAR_DNI",
-    "TELEFONO_COTITULAR",
-    "ASISTENCIA",
+    ("NRO", 6),
+    ("BARRIO", 27),
+    ("MZA", 7),
+    ("LOTE", 7),
+    ("APELLIDO Y NOMBRE", 42),
+    ("DNI", 20),
+    ("Teléfono", 21),
+    ("COTITULAR - Nombre y Apellido", 35),
+    ("COTITULAR - DNI", 24),
+    ("Tel. Cotitular", 41),
+    ("ASISTENCIA", 15),
 ]
 
+THIN_BORDER = Border(
+    left=Side(style="thin", color="000000"),
+    right=Side(style="thin", color="000000"),
+    top=Side(style="thin", color="000000"),
+    bottom=Side(style="thin", color="000000"),
+)
 
-def _clean(val):
-    """Convierte NaN/None a None, números a string."""
-    if val is None:
-        return None
-    if isinstance(val, float) and math.isnan(val):
-        return None
-    if isinstance(val, (int, float)) and not isinstance(val, bool):
-        # DNI o teléfono: si es float sin decimales, convertirlo
-        if val == val and not math.isnan(val):
-            s = str(int(val)) if val == int(val) else str(val)
-            return s
-    return val
+HEADER_FILL = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
 
 
-def cargar_stock():
+def generar_excel(datos, titulo="", subtitulo=""):
     """
-    Lee el Excel de stock y devuelve los registros como lista de dicts.
-    El Excel tiene:
-      - Fila 1: título (merged)
-      - Fila 2: subtítulo (merged)
-      - Fila 3: headers
-      - Filas 4+: datos
+    Genera un Excel en memoria con el formato del modelo de VILLA CARLOS PAZ.
+    - datos: lista de dicts con keys: BARRIO, BENEFICIARIO, DNI, etc.
+    - titulo: texto del título (ej: nombre del departamento/localidad)
+    - subtitulo: texto del subtítulo
+    Devuelve un BytesIO con el .xlsx listo para descargar.
     """
-    if not STOCK_FILE.exists():
-        return []
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Hoja1"
 
-    df = pd.read_excel(
-        STOCK_FILE,
-        sheet_name="Hoja1",
-        header=2,  # fila 3 (0-indexed) son headers
-        dtype={"DNI": str, "COTITULAR - DNI": str},
-    )
+    col_count = len(COLUMNS)
 
-    # Eliminar duplicados de segunda MZA/LOTE
-    cols = list(df.columns)
-    if len(cols) >= 6:
-        df = df.drop(columns=[cols[4], cols[5]], errors="ignore")
-    cols = list(df.columns)
+    # ── Anchos de columna ──
+    for i, (_, width) in enumerate(COLUMNS, 1):
+        ws.column_dimensions[get_column_letter(i)].width = width
 
-    # Renombrar columnas
-    mapper = {
-        cols[0]: "NRO",
-        cols[1]: "BARRIO",
-        cols[2]: "MZA",
-        cols[3]: "LOTE",
-        cols[4]: "APELLIDO_Y_NOMBRE",
-        cols[5]: "DNI",
-        cols[6]: "TELEFONO",
-        cols[7]: "COTITULAR_NOMBRE",
-        cols[8]: "COTITULAR_DNI",
-        cols[9]: "TELEFONO_COTITULAR",
-        cols[10]: "ASISTENCIA",
-    }
-    df.rename(columns=mapper, inplace=True)
+    # ── Fila 1: Título (merged) ──
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=col_count)
+    cell_titulo = ws.cell(1, 1, titulo or "")
+    cell_titulo.font = Font(name="Arial", size=18, bold=True)
+    cell_titulo.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Limpiar: sacar filas sin nombre
-    df = df.dropna(subset=["APELLIDO_Y_NOMBRE"]).reset_index(drop=True)
+    # ── Fila 2: Subtítulo (merged) ──
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=col_count)
+    cell_sub = ws.cell(2, 1, subtitulo or "")
+    cell_sub.font = Font(name="Arial", size=14, bold=True)
+    cell_sub.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Convertir todo a dicts limpios
-    records = []
-    for _, row in df.iterrows():
-        rec = {col: _clean(row.get(col)) for col in COLUMNS}
-        rec["NRO"] = int(rec["NRO"]) if rec["NRO"] is not None else None
-        records.append(rec)
+    # ── Fila 3: Headers ──
+    for i, (label, _) in enumerate(COLUMNS, 1):
+        cell = ws.cell(3, i, label)
+        cell.font = Font(name="Arial", size=11, bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = THIN_BORDER
+        cell.fill = HEADER_FILL
 
-    return records
+    # ── Filas de datos ──
+    for idx, item in enumerate(datos, 1):
+        row_num = idx + 3  # empieza en fila 4
 
+        ws.cell(row_num, 1, idx).font = Font(name="Arial", size=12)
+        ws.cell(row_num, 1).alignment = Alignment(horizontal="center", vertical="center")
+        ws.cell(row_num, 1).border = THIN_BORDER
 
-def obtener_archivo_stock():
-    """Devuelve la ruta del archivo Excel si existe."""
-    return STOCK_FILE if STOCK_FILE.exists() else None
+        ws.cell(row_num, 2, item.get("BARRIO") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 2).alignment = Alignment(horizontal="center", vertical="center")
+        ws.cell(row_num, 2).border = THIN_BORDER
+
+        # MZA, LOTE (columnas 3-4) → vacías
+        for c in [3, 4]:
+            ws.cell(row_num, c, "").font = Font(name="Arial", size=12)
+            ws.cell(row_num, c).alignment = Alignment(horizontal="center", vertical="center")
+            ws.cell(row_num, c).border = THIN_BORDER
+
+        ws.cell(row_num, 5, item.get("BENEFICIARIO") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 5).alignment = Alignment(horizontal="center", vertical="center")
+        ws.cell(row_num, 5).border = THIN_BORDER
+
+        ws.cell(row_num, 6, item.get("DNI") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 6).alignment = Alignment(horizontal="center", vertical="center")
+        ws.cell(row_num, 6).border = THIN_BORDER
+
+        # Teléfono → vacío
+        ws.cell(row_num, 7, "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 7).alignment = Alignment(horizontal="center", vertical="center")
+        ws.cell(row_num, 7).border = THIN_BORDER
+
+        # COTITULAR (cols 8-10) → vacíos
+        for c in [8, 9, 10]:
+            ws.cell(row_num, c, "").font = Font(name="Arial", size=12)
+            ws.cell(row_num, c).alignment = Alignment(horizontal="center", vertical="center")
+            ws.cell(row_num, c).border = THIN_BORDER
+
+        # ASISTENCIA → vacío
+        ws.cell(row_num, 11, "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 11).alignment = Alignment(horizontal="center", vertical="center")
+        ws.cell(row_num, 11).border = THIN_BORDER
+
+    # Guardar en memoria
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer

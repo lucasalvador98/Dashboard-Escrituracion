@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from utils.google_sheets import cargar_datos
-from utils.stock_data import cargar_stock, obtener_archivo_stock
+from utils.stock_data import generar_excel
 import json
 import os
 from dotenv import load_dotenv
@@ -49,26 +49,47 @@ def obtener_datos(skip: int = 0, limit: int = 50, filtro_estado: str = None):
         raise HTTPException(status_code=500, detail=f"Error al procesar los datos: {str(e)}")
 
 
-# ─── Stock / Personas ─────────────────────────────────────────────────────────
+# ─── Stock / Exportar Excel ──────────────────────────────────────────────────
 
-@app.get("/stock-personas")
-def obtener_stock():
-    """Devuelve los datos del Excel de beneficiarios como JSON."""
+@app.get("/stock/exportar")
+def exportar_excel_stock(
+    departamento: str = Query(None),
+    localidad: str = Query(None),
+    barrio: str = Query(None),
+):
+    """
+    Genera un Excel con el formato del modelo de VILLA CARLOS PAZ,
+    usando los datos de escrituración filtrados por depto/localidad/barrio,
+    solo registros finalizadas (Finalizada sin Entregar y Entregada).
+    """
     try:
-        datos = cargar_stock()
-        return {"total": len(datos), "data": datos}
+        sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
+        datos = cargar_datos(sheet_url, creds_json)
+
+        # Filtrar solo finalizadas
+        estados_validos = ["Finalizada sin Entregar", "Entregada"]
+        datos = [d for d in datos if d.get("Estado") in estados_validos]
+
+        # Filtrar por ubicación
+        if departamento:
+            datos = [d for d in datos if (d.get("Departamento") or "").upper() == departamento.upper()]
+        if localidad:
+            datos = [d for d in datos if (d.get("Localidad") or "").upper() == localidad.upper()]
+        if barrio:
+            datos = [d for d in datos if (d.get("Barrio") or "").upper() == barrio.upper()]
+
+        # Armar título
+        partes = [p for p in [departamento, localidad, barrio] if p]
+        titulo = " / ".join(partes) if partes else "Todas las ubicaciones"
+        subtitulo = "TU CASA TU ESCRITURA - Ley 9811"
+
+        buffer = generar_excel(datos, titulo=titulo, subtitulo=subtitulo)
+        filename = f"Stock_{partes[-1] if partes else 'General'}.xlsx".replace(" ", "_")
+
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al leer stock: {str(e)}")
-
-
-@app.get("/stock-personas/exportar")
-def exportar_stock():
-    """Descarga el Excel original de beneficiarios."""
-    archivo = obtener_archivo_stock()
-    if not archivo:
-        raise HTTPException(status_code=404, detail="Archivo de stock no encontrado")
-    return FileResponse(
-        path=str(archivo),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        filename=archivo.name,
-    )
+        raise HTTPException(status_code=500, detail=f"Error al generar Excel: {str(e)}")
