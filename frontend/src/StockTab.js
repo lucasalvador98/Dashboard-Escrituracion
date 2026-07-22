@@ -16,16 +16,6 @@ function downloadExcel(url, filename) {
   document.body.removeChild(a);
 }
 
-// Fetch datos reales desde el Excel vía API
-async function fetchStockData({ departamento, localidad, barrio }) {
-  const params = new URLSearchParams();
-  if (barrio) params.set("barrio", barrio);
-  const url = `${API_URL}/stock/datos${params.toString() ? "?" + params.toString() : ""}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Error al cargar datos de stock");
-  return res.json();
-}
-
 export default function StockTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
   const { filters, setFilters, applyFilters } = useFilters({
@@ -64,26 +54,7 @@ export default function StockTab() {
   function toggleLoc(d, l) { setExpandedLocs(p => ({ ...p, [d + "|" + l]: !p[d + "|" + l] })); }
 
   function abrirDetalle(depto, loc, barrio, items) {
-    // Mostramos los items de escrituración inmediatamente
-    setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items, excelData: null });
-    // En background, buscamos datos del Excel para enriquecer (solo COLINAS tiene)
-    fetchStockData({ departamento: depto, localidad: loc, barrio })
-      .then(data => {
-        if (data && data.length > 0) {
-          // Indexamos por DNI para merge rápido
-          const idx = {};
-          data.forEach(e => { if (e.DNI) idx[e.DNI.replace(/\s/g, "")] = e; });
-          setDetalle(prev => prev ? {
-            ...prev,
-            items: prev.items.map(i => {
-              const dni = ((i.DNI ?? i.dni ?? i.documento) || "").replace(/\s/g, "");
-              return idx[dni] ? { ...i, ...idx[dni] } : i;
-            }),
-            excelData: data,
-          } : prev);
-        }
-      })
-      .catch(() => {}); // Si no hay Excel, se queda con datos de escrituración nomas
+    setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items });
   }
 
   return (

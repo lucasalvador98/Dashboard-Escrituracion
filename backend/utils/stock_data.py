@@ -1,13 +1,8 @@
 import io
-import os
 from pathlib import Path
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
-
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-MODELO_PATH = DATA_DIR / "VILLA CARLOS PAZ (TU CASA TU ESCRITURA- ENTREGA) 08 07 26 (1).xlsx"
-EXCEL_ABSOLUTO = Path(os.environ.get("STOCK_EXCEL_PATH", "/home/lucaa/ESCRITURACION/VILLA CARLOS PAZ (TU CASA TU ESCRITURA- ENTREGA) 08 07 26 (1).xlsx"))
 
 COLUMNS = [
     ("NRO", 6),
@@ -23,21 +18,6 @@ COLUMNS = [
     ("ASISTENCIA", 15),
 ]
 
-# Mapping: (excel_col_index, field_name) — 1-indexed columns from the real Excel
-EXCEL_COL_MAP = [
-    (1, "nro"),
-    (2, "Barrio"),
-    (3, "Mza"),
-    (4, "Lote"),
-    (7, "Beneficiario"),
-    (8, "DNI"),
-    (9, "Telefono"),
-    (10, "Cotitular"),
-    (11, "CotitularDNI"),
-    (12, "TelefonoCotitular"),
-    (13, "Asistencia"),
-]
-
 THIN_BORDER = Border(
     left=Side(style="thin", color="000000"),
     right=Side(style="thin", color="000000"),
@@ -46,41 +26,6 @@ THIN_BORDER = Border(
 )
 
 HEADER_FILL = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
-
-
-def _get_excel_path():
-    """Retorna la ruta al Excel de stock, probando ubicaciones."""
-    if MODELO_PATH.exists():
-        return MODELO_PATH
-    if EXCEL_ABSOLUTO.exists():
-        return EXCEL_ABSOLUTO
-    return None
-
-
-def leer_datos_excel():
-    """
-    Lee el archivo Excel de VILLA CARLOS PAZ y devuelve sus datos
-    como lista de dicts con los field names usados en el frontend.
-    """
-    path = _get_excel_path()
-    if not path:
-        return []
-
-    wb = load_workbook(path)
-    ws = wb.active
-    datos = []
-
-    for row in ws.iter_rows(min_row=4, values_only=True):
-        if not row or not row[0]:
-            continue
-        item = {}
-        for col_idx, field_name in EXCEL_COL_MAP:
-            val = row[col_idx - 1] if col_idx - 1 < len(row) else None
-            item[field_name] = str(val).strip() if val is not None else ""
-        datos.append(item)
-
-    wb.close()
-    return datos
 
 
 def generar_excel(datos, titulo="", subtitulo=""):
