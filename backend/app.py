@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from utils.google_sheets import cargar_datos
 from utils.stock_data import generar_excel, leer_datos_excel
 import json
@@ -9,7 +9,18 @@ from dotenv import load_dotenv
 
 # Cargar variables de entorno
 load_dotenv()
-creds_json = json.loads(os.getenv("GOOGLE_CLOUD_SERVICE_ACCOUNT"))
+
+_creds_json = None
+
+def _get_creds():
+    """Lazy load de credenciales Google — necesario solo para endpoints que usan Sheets."""
+    global _creds_json
+    if _creds_json is None:
+        raw = os.getenv("GOOGLE_CLOUD_SERVICE_ACCOUNT")
+        if not raw:
+            raise RuntimeError("GOOGLE_CLOUD_SERVICE_ACCOUNT no está configurada")
+        _creds_json = json.loads(raw)
+    return _creds_json
 
 app = FastAPI()
 
@@ -34,7 +45,7 @@ def read_root():
 def obtener_datos(skip: int = 0, limit: int = 50, filtro_estado: str = None):
     try:
         sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
-        datos = cargar_datos(sheet_url, creds_json)
+        datos = cargar_datos(sheet_url, _get_creds())
 
         # Aplicar filtro por estado si se proporciona
         if filtro_estado:
@@ -85,7 +96,7 @@ def exportar_excel_stock(
     """
     try:
         sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
-        datos = cargar_datos(sheet_url, creds_json)
+        datos = cargar_datos(sheet_url, _get_creds())
 
         # Filtrar solo finalizadas
         estados_validos = ["Finalizada sin Entregar", "Entregada"]
