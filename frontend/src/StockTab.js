@@ -218,10 +218,11 @@ export default function StockTab() {
                         </td>
                       </tr>
                     ) : (
-                      (detalle.stockData || detalle.items).map((item, idx) => {
-                        // Si viene del Excel (stockData) usa todos los campos
-                        // Si falló la API usa los datos de escrituración como fallback
-                        const fromExcel = detalle.stockData !== null;
+                      (() => {
+                        const hasStock = Array.isArray(detalle.stockData) && detalle.stockData.length > 0;
+                        const datos = hasStock ? detalle.stockData : detalle.items;
+                        return datos.map((item, idx) => {
+                        const fromExcel = hasStock;
                         return (
                         <tr key={idx} className="border-t border-slate-200 hover:bg-slate-50">
                           <td className="px-3 py-2 text-sm text-center border border-slate-200">{idx + 1}</td>
@@ -237,7 +238,8 @@ export default function StockTab() {
                           <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Asistencia || "") : <span className="text-slate-300">—</span>}</td>
                         </tr>
                         );
-                      })
+                        });
+                      })()
                     )}
                   </tbody>
                 </table>
