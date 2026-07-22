@@ -199,21 +199,26 @@ export default function StockTab() {
                   </thead>
                   <tbody>
                     {detalle.items.map((item, idx) => {
-                      const nombre = item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre;
+                      const nombre = item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre;
                       const dni = item.DNI ?? item.dni ?? item.documento;
+                      const mza = item["Mza. Plano"] ?? item["Mza. Oficial"] ?? item.Mza ?? item.MZA ?? item.mza;
+                      const lote = item["Lote Plano"] ?? item["Lote oficial"] ?? item["Lote Oficial"] ?? item.Lote ?? item.LOTE;
+                      const cotitular = item["COTITULAR Nombre y Apellido"] ?? item["COTITULAR - Nombre y Apellido"] ?? item.Cotitular;
+                      const dniCot = item["COTITULAR DNI"] ?? item["COTITULAR - DNI"] ?? item.CotitularDNI;
+                      const telCot = item["COTITULAR Telefono"] ?? item["Tel. Cotitular"] ?? item.TelefonoCotitular;
                       return (
                       <tr key={idx} className="border-t border-slate-200 hover:bg-slate-50">
                         <td className="px-3 py-2 text-sm text-center border border-slate-200">{idx + 1}</td>
                         <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Barrio || ""}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Mza || <span className="text-slate-300">—</span>}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Lote || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{mza || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{lote || <span className="text-slate-300">—</span>}</td>
                         <td className="px-3 py-2 text-sm text-center border border-slate-200 font-semibold text-slate-800">{nombre || <span className="text-slate-300">—</span>}</td>
                         <td className="px-3 py-2 text-sm text-center border border-slate-200 font-mono text-xs">{dni || <span className="text-slate-300">—</span>}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Telefono || <span className="text-slate-300">—</span>}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Cotitular || <span className="text-slate-300">—</span>}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.CotitularDNI || <span className="text-slate-300">—</span>}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.TelefonoCotitular || <span className="text-slate-300">—</span>}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Asistencia || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Telefono || item.telefono || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{cotitular || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{dniCot || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{telCot || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Asistencia || item.ASISTENCIA || <span className="text-slate-300">—</span>}</td>
                       </tr>
                       );
                     })}
