@@ -64,10 +64,26 @@ export default function StockTab() {
   function toggleLoc(d, l) { setExpandedLocs(p => ({ ...p, [d + "|" + l]: !p[d + "|" + l] })); }
 
   function abrirDetalle(depto, loc, barrio, items) {
-    setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items, loading: true, stockData: null, depto, loc, barrio });
+    // Mostramos los items de escrituración inmediatamente
+    setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items, excelData: null });
+    // En background, buscamos datos del Excel para enriquecer (solo COLINAS tiene)
     fetchStockData({ departamento: depto, localidad: loc, barrio })
-      .then(data => setDetalle(prev => prev ? { ...prev, stockData: data, loading: false } : prev))
-      .catch(() => setDetalle(prev => prev ? { ...prev, stockData: null, loading: false } : prev));
+      .then(data => {
+        if (data && data.length > 0) {
+          // Indexamos por DNI para merge rápido
+          const idx = {};
+          data.forEach(e => { if (e.DNI) idx[e.DNI.replace(/\s/g, "")] = e; });
+          setDetalle(prev => prev ? {
+            ...prev,
+            items: prev.items.map(i => {
+              const dni = ((i.DNI ?? i.dni ?? i.documento) || "").replace(/\s/g, "");
+              return idx[dni] ? { ...i, ...idx[dni] } : i;
+            }),
+            excelData: data,
+          } : prev);
+        }
+      })
+      .catch(() => {}); // Si no hay Excel, se queda con datos de escrituración nomas
   }
 
   return (
@@ -211,36 +227,25 @@ export default function StockTab() {
                     </tr>
                   </thead>
                   <tbody>
-                    {detalle.loading ? (
-                      <tr>
-                        <td colSpan={11} className="text-center py-8 text-slate-400 text-sm">
-                          Cargando datos del Excel…
-                        </td>
+                    {detalle.items.map((item, idx) => {
+                      const nombre = item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre;
+                      const dni = item.DNI ?? item.dni ?? item.documento;
+                      return (
+                      <tr key={idx} className="border-t border-slate-200 hover:bg-slate-50">
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{idx + 1}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Barrio || ""}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Mza || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Lote || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 font-semibold text-slate-800">{nombre || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 font-mono text-xs">{dni || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Telefono || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Cotitular || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.CotitularDNI || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.TelefonoCotitular || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Asistencia || <span className="text-slate-300">—</span>}</td>
                       </tr>
-                    ) : (
-                      (() => {
-                        const hasStock = Array.isArray(detalle.stockData) && detalle.stockData.length > 0;
-                        const datos = hasStock ? detalle.stockData : detalle.items;
-                        return datos.map((item, idx) => {
-                        const fromExcel = hasStock;
-                        return (
-                        <tr key={idx} className="border-t border-slate-200 hover:bg-slate-50">
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{idx + 1}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Barrio || "") : (item.Barrio || "")}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Mza || "") : <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Lote || "") : <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200 font-semibold text-slate-800">{(item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre) || <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200 font-mono text-xs">{(item.DNI ?? item.dni ?? item.documento) || <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Telefono || "") : <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Cotitular || "") : <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.CotitularDNI || "") : <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.TelefonoCotitular || "") : <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Asistencia || "") : <span className="text-slate-300">—</span>}</td>
-                        </tr>
-                        );
-                        });
-                      })()
-                    )}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
