@@ -1,168 +1,161 @@
-import React, { useMemo, useState } from "react";
-import useDataLoader from "./hooks/useDataLoader";
-import useFilters from "./hooks/useFilters";
-import SelectFilters from "./components/SelectFilters";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import API_CONFIG from "./config-api";
+
+const API_URL = API_CONFIG.BASE_URL_BACKEND;
+
+const COLUMNS = [
+  { key: "NRO", label: "N°", width: "w-12" },
+  { key: "BARRIO", label: "BARRIO", width: "w-24" },
+  { key: "MZA", label: "MZA", width: "w-16" },
+  { key: "LOTE", label: "LOTE", width: "w-16" },
+  { key: "APELLIDO_Y_NOMBRE", label: "APELLIDO Y NOMBRE", width: "min-w-[200px]" },
+  { key: "DNI", label: "DNI", width: "w-28" },
+  { key: "TELEFONO", label: "Teléfono", width: "w-36" },
+  { key: "COTITULAR_NOMBRE", label: "COTITULAR", width: "min-w-[180px]" },
+  { key: "COTITULAR_DNI", label: "DNI Cotitular", width: "w-28" },
+  { key: "TELEFONO_COTITULAR", label: "Tel. Cotitular", width: "w-36" },
+];
 
 export default function StockTab() {
-  const { data, loading, error } = useDataLoader("escrituracion");
-  const { filters, setFilters, applyFilters } = useFilters({
-    departamento: "Todos",
-    localidad: "Todos",
-    barrio: "Todos",
-    estado: "Todos",
-    escribano: "",
-    dni: ""
-  });
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
 
-  const filtered = useMemo(() => applyFilters(data), [data, filters, applyFilters]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    axios
+      .get(`${API_URL}/stock-personas`)
+      .then((res) => {
+        if (!cancelled) {
+          setData(Array.isArray(res.data?.data) ? res.data.data : []);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err?.message || "Error al cargar datos");
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, []);
 
-  // Agrupación por Departamento > Localidad > Barrio
-  const grouped = useMemo(() => {
-    const g = {};
-    filtered.forEach(item => {
-      const dept = item.Departamento || "Sin Departamento";
-      const loc = item.Localidad || "Sin Localidad";
-      const bar = item.Barrio || "Sin Barrio";
-      if (!g[dept]) g[dept] = {};
-      if (!g[dept][loc]) g[dept][loc] = {};
-      if (!g[dept][loc][bar]) g[dept][loc][bar] = [];
-      g[dept][loc][bar].push(item);
-    });
-    return g;
-  }, [filtered]);
+  const handleDownload = () => {
+    const a = document.createElement("a");
+    a.href = `${API_URL}/stock-personas/exportar`;
+    a.download = "VILLA CARLOS PAZ (TU CASA TU ESCRITURA- ENTREGA).xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
-  const estadosCols = ["De Baja", "En Trámite", "Entregada", "Finalizada sin Entregar", "Hipotecada", "No Retiradas"];
-
-  function contarEstados(items) {
-    const counts = {};
-    estadosCols.forEach(e => (counts[e] = 0));
-    items.forEach(item => {
-      if (counts[item.Estado] !== undefined) counts[item.Estado]++;
-    });
-    return counts;
-  }
-
-  const [expandedDeptos, setExpandedDeptos] = useState({});
-  const [expandedLocs, setExpandedLocs] = useState({});
-  const [detalle, setDetalle] = useState(null);
-
-  function toggleDepto(depto) {
-    setExpandedDeptos(prev => ({ ...prev, [depto]: !prev[depto] }));
-  }
-  function toggleLoc(depto, loc) {
-    setExpandedLocs(prev => ({ ...prev, [depto + "|" + loc]: !prev[depto + "|" + loc] }));
-  }
-  function showDetalle(items, titulo) {
-    setDetalle({ items, titulo });
-  }
-  function closeDetalle() {
-    setDetalle(null);
-  }
+  const filtered = search
+    ? data.filter((item) =>
+        Object.values(item).some(
+          (v) => v && String(v).toLowerCase().includes(search.toLowerCase())
+        )
+      )
+    : data;
 
   return (
-    <>
-      <SelectFilters data={data} filters={filters} setFilters={setFilters} />
+    <div className="space-y-6">
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+            VILLA CARLOS PAZ
+          </h2>
+          <p className="text-sm text-slate-500 font-medium">
+            TU CASA TU ESCRITURA - Ley 9811
+          </p>
+        </div>
 
-      {loading && <p>Cargando datos...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+        <button
+          onClick={handleDownload}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Descargar Excel
+        </button>
+      </div>
 
-      {!loading && !error && (
-        <div style={{ overflowX: "auto", maxHeight: "70vh", position: "relative" }}>
-          <table className="stock-table">
-            <thead>
-              <tr>
-                <th></th>
-                <th>Departamento</th>
-                <th>Localidad</th>
-                <th>Barrio</th>
-                {estadosCols.map(e => <th key={e}>{e}</th>)}
-                <th>Suma total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(grouped).map(([depto, locs]) => (
-                <React.Fragment key={depto}>
-                  <tr className="row-depto" onClick={() => toggleDepto(depto)} style={{ cursor: "pointer" }}>
-                    <td>{expandedDeptos[depto] ? "▼" : "▶"}</td>
-                    <td colSpan={2} style={{ fontWeight: 600 }}>{depto}</td>
-                    <td></td>
-                    {(() => {
-                      let items = [];
-                      Object.values(locs).forEach(barrioObj => {
-                        Object.values(barrioObj).forEach(arr => (items = items.concat(arr)));
-                      });
-                      const counts = contarEstados(items);
-                      return [...estadosCols.map(e => <td key={e}>{counts[e] || 0}</td>), <td key="total">{items.length}</td>];
-                    })()}
-                  </tr>
+      {/* Buscador */}
+      <div className="w-full max-w-sm">
+        <input
+          type="text"
+          placeholder="Buscar por nombre, DNI, barrio..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white shadow-sm"
+        />
+      </div>
 
-                  {expandedDeptos[depto] && Object.entries(locs).map(([loc, barriosObj]) => (
-                    <React.Fragment key={loc}>
-                      <tr className="row-loc" onClick={() => toggleLoc(depto, loc)} style={{ cursor: "pointer" }}>
-                        <td style={{ paddingLeft: '2em' }}>{expandedLocs[depto + "|" + loc] ? "▼" : "▶"}</td>
-                        <td></td>
-                        <td colSpan={2} style={{ fontWeight: 500 }}>{loc}</td>
-                        {(() => {
-                          let items = [];
-                          Object.values(barriosObj).forEach(arr => (items = items.concat(arr)));
-                          const counts = contarEstados(items);
-                          return [...estadosCols.map(e => <td key={e}>{counts[e] || 0}</td>), <td key="total">{items.length}</td>];
-                        })()}
-                      </tr>
-
-                      {expandedLocs[depto + "|" + loc] && Object.entries(barriosObj).map(([barrio, items], idx) => (
-                        <tr key={barrio} className={idx % 2 === 0 ? "row-even" : "row-odd"}>
-                          <td></td>
-                          <td></td>
-                          <td>{barrio}</td>
-                          <td>
-                            <button className="btn-detalle" onClick={() => showDetalle(items, `${depto} - ${loc} - ${barrio}`)}>Ver detalle</button>
-                          </td>
-                          {(() => {
-                            const counts = contarEstados(items);
-                            return [...estadosCols.map(e => <td key={e}>{counts[e] || 0}</td>), <td key="total">{items.length}</td>];
-                          })()}
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+      {/* Tabla */}
+      {loading && (
+        <div className="flex items-center justify-center py-16">
+          <div className="spinner"></div>
         </div>
       )}
 
-      {detalle && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={closeDetalle}>
-          <div style={{ background: '#fff', padding: '2rem', borderRadius: '10px', minWidth: '400px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <h3>Detalle: {detalle.titulo}</h3>
-            <table style={{ width: '100%', marginTop: '1em' }}>
+      {error && (
+        <div className="alert alert-error">
+          <p className="font-semibold">Error</p>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div className="table-wrap">
+          <div className="overflow-x-auto">
+            <table className="stock-table w-full">
               <thead>
                 <tr>
-                  <th>DNI</th>
-                  <th>Departamento</th>
-                  <th>Localidad</th>
-                  <th>Barrio</th>
-                  <th>Estado</th>
+                  {COLUMNS.map((col) => (
+                    <th key={col.key} className="whitespace-nowrap text-[11px]">
+                      {col.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {detalle.items.map((item, idx) => (
-                  <tr key={idx}>
-                    <td>{item.DNI}</td>
-                    <td>{item.Departamento}</td>
-                    <td>{item.Localidad}</td>
-                    <td>{item.Barrio}</td>
-                    <td>{item.Estado}</td>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={COLUMNS.length} className="text-center py-12 text-slate-400 font-medium">
+                      No se encontraron beneficiarios
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  filtered.map((item, idx) => (
+                    <tr key={item.NRO ?? idx} className={idx % 2 === 0 ? "row-even" : "row-odd"}>
+                      {COLUMNS.map((col) => (
+                        <td key={col.key} className="text-sm">
+                          {item[col.key] ?? ""}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
-            <button onClick={closeDetalle} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#2980b9', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cerrar</button>
+          </div>
+
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-50/50 border-t border-slate-200/60 text-sm text-slate-500">
+            <span className="font-medium">
+              {filtered.length} beneficiario{filtered.length !== 1 ? "s" : ""}
+              {search && filtered.length !== data.length
+                ? ` (filtrado de ${data.length})`
+                : ""}
+            </span>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

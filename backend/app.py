@@ -1,8 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from utils.google_sheets import cargar_datos
+from utils.stock_data import cargar_stock, obtener_archivo_stock
 import json
-import os  # Asegúrate de importar os
+import os
 from dotenv import load_dotenv
 
 # Cargar variables de entorno
@@ -45,3 +47,28 @@ def obtener_datos(skip: int = 0, limit: int = 50, filtro_estado: str = None):
         return {"total": total, "data": datos}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al procesar los datos: {str(e)}")
+
+
+# ─── Stock / Personas ─────────────────────────────────────────────────────────
+
+@app.get("/stock-personas")
+def obtener_stock():
+    """Devuelve los datos del Excel de beneficiarios como JSON."""
+    try:
+        datos = cargar_stock()
+        return {"total": len(datos), "data": datos}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al leer stock: {str(e)}")
+
+
+@app.get("/stock-personas/exportar")
+def exportar_stock():
+    """Descarga el Excel original de beneficiarios."""
+    archivo = obtener_archivo_stock()
+    if not archivo:
+        raise HTTPException(status_code=404, detail="Archivo de stock no encontrado")
+    return FileResponse(
+        path=str(archivo),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=archivo.name,
+    )
