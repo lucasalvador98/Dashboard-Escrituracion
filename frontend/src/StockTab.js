@@ -229,7 +229,7 @@ export default function StockTab() {
                           <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Barrio || "") : (item.Barrio || "")}</td>
                           <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Mza || "") : <span className="text-slate-300">—</span>}</td>
                           <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Lote || "") : <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2 text-sm text-center border border-slate-200 font-semibold text-slate-800">{(item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.Nombre) || <span className="text-slate-300">—</span>}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200 font-semibold text-slate-800">{(item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre) || <span className="text-slate-300">—</span>}</td>
                           <td className="px-3 py-2 text-sm text-center border border-slate-200 font-mono text-xs">{(item.DNI ?? item.dni ?? item.documento) || <span className="text-slate-300">—</span>}</td>
                           <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Telefono || "") : <span className="text-slate-300">—</span>}</td>
                           <td className="px-3 py-2 text-sm text-center border border-slate-200">{fromExcel ? (item.Cotitular || "") : <span className="text-slate-300">—</span>}</td>
