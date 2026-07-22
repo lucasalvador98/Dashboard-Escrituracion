@@ -170,48 +170,81 @@ export default function StockTab() {
         </div>
       )}
 
-      {/* Modal de detalle */}
+      {/* Modal de detalle — MISMO FORMATO que el Excel modelo */}
       {detalle && (
         <div
           style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={() => setDetalle(null)}
         >
-          <div style={{ background: "#fff", padding: "2rem", borderRadius: "10px", minWidth: "450px", maxHeight: "80vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "#fff", padding: "2rem", borderRadius: "12px", minWidth: "90vw", maxWidth: "1200px", maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-slate-800">Detalle: {detalle.titulo}</h3>
-              <button
-                onClick={() => downloadExcel(
-                  `${API_URL}/stock/exportar?departamento=${encodeURIComponent(detalle.titulo.split(" - ")[0])}&localidad=${encodeURIComponent(detalle.titulo.split(" - ")[1])}&barrio=${encodeURIComponent(detalle.titulo.split(" - ")[2])}`,
-                  `Stock_${detalle.titulo.split(" - ")[2].replace(/\s+/g, "_")}.xlsx`
-                )}
-                className="text-blue-600 hover:text-blue-800 text-xs font-semibold underline"
-              >
-                Descargar Excel
-              </button>
+              <div>
+                <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">
+                  {detalle.titulo}
+                </h3>
+                <p className="text-sm text-slate-500 font-medium">
+                  TU CASA TU ESCRITURA - Ley 9811
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => downloadExcel(
+                    `${API_URL}/stock/exportar?departamento=${encodeURIComponent(detalle.titulo.split(" - ")[0])}&localidad=${encodeURIComponent(detalle.titulo.split(" - ")[1])}&barrio=${encodeURIComponent(detalle.titulo.split(" - ")[2])}`,
+                    `Stock_${detalle.titulo.split(" - ")[2].replace(/\s+/g, "_")}.xlsx`
+                  )}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Descargar Excel
+                </button>
+                <button onClick={() => setDetalle(null)} className="px-4 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-all">
+                  Cerrar
+                </button>
+              </div>
             </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="text-left px-2 py-1.5 text-slate-500 font-semibold text-[11px] uppercase">N°</th>
-                  <th className="text-left px-2 py-1.5 text-slate-500 font-semibold text-[11px] uppercase">Beneficiario</th>
-                  <th className="text-left px-2 py-1.5 text-slate-500 font-semibold text-[11px] uppercase">DNI</th>
-                  <th className="text-left px-2 py-1.5 text-slate-500 font-semibold text-[11px] uppercase">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {detalle.items.map((item, idx) => (
-                  <tr key={idx} className="border-t border-slate-100">
-                    <td className="px-2 py-1.5 text-slate-400">{idx + 1}</td>
-                    <td className="px-2 py-1.5">{item.Beneficiario}</td>
-                    <td className="px-2 py-1.5">{item.DNI}</td>
-                    <td className="px-2 py-1.5">{item.Estado}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button onClick={() => setDetalle(null)} className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-all">
-              Cerrar
-            </button>
+
+            <div className="table-wrap">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "#d9e1f2" }}>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">N°</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">BARRIO</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">MZA</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">LOTE</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">APELLIDO Y NOMBRE</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">DNI</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">Teléfono</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">COTITULAR</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">DNI Cotitular</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">Tel. Cotitular</th>
+                      <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 whitespace-nowrap text-center">ASISTENCIA</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detalle.items.map((item, idx) => (
+                      <tr key={idx} className="border-t border-slate-200 hover:bg-slate-50">
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{idx + 1}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Barrio || ""}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Beneficiario || ""}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.DNI || ""}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       )}
