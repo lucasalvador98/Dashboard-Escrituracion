@@ -5,63 +5,32 @@ import StockTab from "./StockTab";
 import MontosTab from "./MontosTab";
 
 const TABS = ["ESCRITURACION", "STOCK", "MONTOS"];
-const ESCRITURACION_SUBTABS = [
-  "Diferencia entre Ingreso y Sorteo",
-  "Diferencia entre Sorteo y Aceptación",
-  "Diferencia entre Aceptación y Firma",
-  "Diferencia entre Firma e Ingreso Diario",
-  "Diferencia entre Ingreso Diario y Testimonio"
-];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("ESCRITURACION");
-  const [escriSubIndex, setEscriSubIndex] = useState(0);
-
-  function handleSelect(tabKey) {
-    setActiveTab(tabKey);
-    if (tabKey === "ESCRITURACION") setEscriSubIndex(0);
-  }
 
   function goPrev() {
-    if (activeTab === "ESCRITURACION") {
-      setEscriSubIndex(prev => (prev - 1 + ESCRITURACION_SUBTABS.length) % ESCRITURACION_SUBTABS.length);
-    } else {
-      const idx = TABS.indexOf(activeTab);
-      setActiveTab(TABS[(idx - 1 + TABS.length) % TABS.length]);
-      if (TABS[(idx - 1 + TABS.length) % TABS.length] === "ESCRITURACION") setEscriSubIndex(0);
-    }
+    const idx = TABS.indexOf(activeTab);
+    setActiveTab(TABS[(idx - 1 + TABS.length) % TABS.length]);
   }
 
   function goNext() {
-    if (activeTab === "ESCRITURACION") {
-      setEscriSubIndex(prev => (prev + 1) % ESCRITURACION_SUBTABS.length);
-    } else {
-      const idx = TABS.indexOf(activeTab);
-      setActiveTab(TABS[(idx + 1) % TABS.length]);
-      if (TABS[(idx + 1) % TABS.length] === "ESCRITURACION") setEscriSubIndex(0);
-    }
+    const idx = TABS.indexOf(activeTab);
+    setActiveTab(TABS[(idx + 1) % TABS.length]);
   }
 
   return (
     <div className="app-root">
       <Sidebar
         active={activeTab}
-        onSelect={handleSelect}
+        onSelect={setActiveTab}
         onPrev={goPrev}
         onNext={goNext}
-        escriSubIndex={escriSubIndex}
-        onChangeEscriSubIndex={setEscriSubIndex}
       />
 
       <div className="app-content">
         <main className="app-main">
-          {activeTab === "ESCRITURACION" && (
-            <Escrituracion
-              activeDiffTabIndex={escriSubIndex}
-              onChangeDiffTab={setEscriSubIndex}
-              diffTabLabels={ESCRITURACION_SUBTABS}
-            />
-          )}
+          {activeTab === "ESCRITURACION" && <Escrituracion />}
           {activeTab === "STOCK" && <StockTab />}
           {activeTab === "MONTOS" && <MontosTab />}
         </main>

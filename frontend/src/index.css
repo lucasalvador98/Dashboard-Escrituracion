@@ -394,3 +394,143 @@ body {
   }
 }
 
+/* ============================================================
+   NUEVO: Tabla semáforo unificada (matrix table)
+   ============================================================ */
+
+/* Sortable header */
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.sortable-th:hover {
+  @apply bg-blue-50/60;
+}
+
+/* Columnas de diferencia compactas */
+.diff-th {
+  text-align: center !important;
+  padding: 0.75rem 0.25rem !important;
+  font-size: 10px !important;
+  min-width: 60px;
+  max-width: 72px;
+}
+
+.diff-th span {
+  display: block;
+  line-height: 1.2;
+}
+
+.diff-threshold {
+  @apply text-[9px] text-slate-400 font-semibold;
+  display: block !important;
+  margin-top: 1px;
+}
+
+/* Celdas de diferencia */
+.diff-cell {
+  text-align: center !important;
+  padding: 0.5rem 0.25rem !important;
+  transition: background 0.15s ease;
+}
+
+.diff-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Colores semáforo para celdas y badges */
+.diff-cell.green .diff-badge { @apply bg-green-200 text-green-800; }
+.diff-cell.yellow .diff-badge { @apply bg-yellow-200 text-yellow-800; }
+.diff-cell.red .diff-badge { @apply bg-red-200 text-red-800; }
+.diff-cell.gray .diff-badge { @apply bg-gray-200 text-gray-500; }
+
+/* Número de fila */
+.row-num {
+  width: 2.5rem !important;
+  text-align: center !important;
+  color: #94a3b8 !important;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.5rem 0.25rem !important;
+}
+
+/* Status pills */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.pill-green { @apply bg-emerald-100 text-emerald-700; }
+.pill-blue { @apply bg-blue-100 text-blue-700; }
+.pill-red { @apply bg-red-100 text-red-700; }
+.pill-gray { @apply bg-gray-200 text-gray-600; }
+.pill-default { @apply bg-slate-100 text-slate-600; }
+
+/* Compactar tabla data-table para la matriz */
+.matrix-table th,
+.matrix-table td {
+  padding: 0.5rem 0.5rem !important;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+}
+
+.matrix-table th {
+  font-size: 0.6875rem !important;
+}
+
+/* No hay subrayado hover masivo en matrix */
+.matrix-table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.04) !important;
+}
+
+/* tfoot (Montos) */
+.data-table tfoot td {
+  @apply px-4 py-3 text-sm border-t-2 border-slate-300;
+}
+
+/* Data-table text-right support */
+.data-table th.text-right,
+.data-table td.text-right {
+  text-align: right;
+}
+
+/* Grid 2/4 columnas para Montos */
+.grid-cols-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-cols-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 768px) {
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.font-mono {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
