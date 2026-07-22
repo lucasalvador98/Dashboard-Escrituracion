@@ -14,11 +14,13 @@ export default function SelectFilters({ data = [], filters = {}, setFilters }) {
 
   const unique = (arr) => Array.from(new Set(arr.filter(Boolean))).sort();
 
+  const getEscribano = i => i["Escribano Designado"] ?? i.Escribano ?? i.escribano ?? "";
+
   const departamentos = ["Todos", ...unique(data.map(i => i.Departamento))];
   const localidadesAll = unique(data.map(i => i.Localidad));
   const barriosAll = unique(data.map(i => i.Barrio));
   const estados = ["Todos", ...unique(data.map(i => i.Estado))];
-  const escribanosList = ["Todos", ...unique(data.map(i => i["Escribano Designado"]))];
+  const escribanosList = ["Todos", ...unique(data.map(i => getEscribano(i)))];
 
   // Filtrado dependiente
   const localidades = filters.departamento && filters.departamento !== "Todos"

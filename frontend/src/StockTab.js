@@ -7,6 +7,10 @@ import API_CONFIG from "./config-api";
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
 const ESTADOS_FINALIZADAS = ["Finalizada sin Entregar", "Entregada"];
 
+// Helper para extraer el nombre del beneficiario con fallback a distintos field names
+const getBeneficiario = item => item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre ?? "-";
+const getDNI = item => item.DNI ?? item.dni ?? item.documento ?? "-";
+
 function downloadExcel(url, filename) {
   const a = document.createElement("a");
   a.href = url;
@@ -232,8 +236,8 @@ export default function StockTab() {
                         <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Barrio || ""}</td>
                         <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
                         <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Beneficiario || ""}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.DNI || ""}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 font-semibold text-slate-800">{getBeneficiario(item)}</td>
+                        <td className="px-3 py-2 text-sm text-center border border-slate-200 font-mono text-xs">{getDNI(item)}</td>
                         <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
                         <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
                         <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>

@@ -1,5 +1,15 @@
 import { useCallback, useState } from "react";
 
+/** Extrae el valor del escribano de un item probando distintas variantes del campo */
+function getEscribano(item) {
+  return item?.["Escribano Designado"] ?? item?.Escribano ?? item?.escribano ?? "";
+}
+
+/** Extrae el DNI de un item probando distintas variantes */
+function getDNI(item) {
+  return item?.DNI ?? item?.dni ?? item?.documento ?? "";
+}
+
 export default function useFilters(initial = {}) {
   const [filters, setFilters] = useState(initial);
 
@@ -17,8 +27,12 @@ export default function useFilters(initial = {}) {
       if (f.localidad && f.localidad !== "Todos" && item.Localidad && !item.Localidad.toUpperCase().includes((f.localidad || "").trim().toUpperCase())) return false;
       if (f.barrio && f.barrio !== "Todos" && item.Barrio && !item.Barrio.toUpperCase().includes((f.barrio || "").trim().toUpperCase())) return false;
       if (f.estado && f.estado !== "Todos" && item.Estado && !item.Estado.toUpperCase().includes((f.estado || "").trim().toUpperCase())) return false;
-      if (f.escribano && item["Escribano Designado"] && !item["Escribano Designado"].toUpperCase().includes((f.escribano || "").trim().toUpperCase())) return false;
-      if (f.dni && (!item.DNI || !String(item.DNI).includes(f.dni))) return false;
+      // Escribano: prueba múltiples variantes del campo
+      const itemEscribano = getEscribano(item);
+      if (f.escribano && itemEscribano && !itemEscribano.toUpperCase().includes((f.escribano || "").trim().toUpperCase())) return false;
+      // DNI: prueba múltiples variantes
+      const itemDNI = getDNI(item);
+      if (f.dni && itemDNI && !String(itemDNI).includes(f.dni)) return false;
       return true;
     });
   }, [filters]);
@@ -37,7 +51,7 @@ export default function useFilters(initial = {}) {
     opts.localidades = ["Todos", ...setify(data.map(i => i.Localidad))];
     opts.barrios = ["Todos", ...setify(data.map(i => i.Barrio))];
     opts.estados = ["Todos", ...setify(data.map(i => i.Estado))];
-    opts.escribanos = ["", ...setify(data.map(i => i["Escribano Designado"]))];
+    opts.escribanos = ["", ...setify(data.map(i => getEscribano(i)))];
     return opts;
   }, []);
 

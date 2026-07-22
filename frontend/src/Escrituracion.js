@@ -74,14 +74,20 @@ export default function Escrituracion() {
   const [sortOrder, setSortOrder] = useState("asc");
   const [page, setPage] = useState(1);
   const [intervalDetail, setIntervalDetail] = useState(null);
+  const [selectedEstado, setSelectedEstado] = useState(null);
 
   // === Datos procesados ===
   const rawData = Array.isArray(data) ? data : [];
   const processedData = useMemo(() => generarReporte(rawData), [rawData]);
   const filteredData = useMemo(() => applyFilters(processedData), [processedData, filters, applyFilters]);
 
-  // === Filtro por estado desde tarjetas ===
-  const [selectedEstado, setSelectedEstado] = useState(null);
+  // Sync selectedEstado cuando se cambia estado desde el dropdown de filtros
+  useEffect(() => {
+    const estadoFromDropdown = filters.estado && filters.estado !== "Todos" ? filters.estado : null;
+    if (estadoFromDropdown !== selectedEstado) {
+      setSelectedEstado(estadoFromDropdown);
+    }
+  }, [filters.estado]);
 
   const estadoFiltered = useMemo(() => {
     if (!selectedEstado) return filteredData;
