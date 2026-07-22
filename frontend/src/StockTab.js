@@ -7,10 +7,6 @@ import API_CONFIG from "./config-api";
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
 const ESTADOS_FINALIZADAS = ["Finalizada sin Entregar", "Entregada"];
 
-// Helper para extraer el nombre del beneficiario con fallback a distintos field names
-const getBeneficiario = item => item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre ?? "-";
-const getDNI = item => item.DNI ?? item.dni ?? item.documento ?? "-";
-
 function downloadExcel(url, filename) {
   const a = document.createElement("a");
   a.href = url;
@@ -18,6 +14,16 @@ function downloadExcel(url, filename) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+}
+
+// Fetch datos reales desde el Excel vía API
+async function fetchStockData({ departamento, localidad, barrio }) {
+  const params = new URLSearchParams();
+  if (barrio) params.set("barrio", barrio);
+  const url = `${API_URL}/stock/datos${params.toString() ? "?" + params.toString() : ""}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Error al cargar datos de stock");
+  return res.json();
 }
 
 export default function StockTab() {
@@ -56,6 +62,13 @@ export default function StockTab() {
 
   function toggleDepto(d) { setExpandedDeptos(p => ({ ...p, [d]: !p[d] })); }
   function toggleLoc(d, l) { setExpandedLocs(p => ({ ...p, [d + "|" + l]: !p[d + "|" + l] })); }
+
+  function abrirDetalle(depto, loc, barrio, items) {
+    setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items, loading: true, stockData: null, depto, loc, barrio });
+    fetchStockData({ departamento: depto, localidad: loc, barrio })
+      .then(data => setDetalle(prev => prev ? { ...prev, stockData: data, loading: false } : prev))
+      .catch(() => setDetalle(prev => prev ? { ...prev, stockData: [], loading: false } : prev));
+  }
 
   return (
     <div className="space-y-6">
@@ -121,7 +134,7 @@ export default function StockTab() {
                             <td></td>
                             <td>{barrio}</td>
                             <td>
-                              <button className="btn-detalle" onClick={() => setDetalle({ items, titulo: `${depto} - ${loc} - ${barrio}` })}>
+                              <button className="btn-detalle" onClick={() => abrirDetalle(depto, loc, barrio, items)}>
                                 Ver detalle
                               </button>
                             </td>
@@ -154,30 +167,30 @@ export default function StockTab() {
                 <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">
                   {detalle.titulo}
                 </h3>
-                <p className="text-sm text-slate-500 font-medium">
-                  TU CASA TU ESCRITURA - Ley 9811
-                </p>
+              <p className="text-sm text-slate-500 font-medium">
+                    TU CASA TU ESCRITURA - Ley 9811
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => downloadExcel(
+                      `${API_URL}/stock/exportar?departamento=${encodeURIComponent(detalle.titulo.split(" - ")[0])}&localidad=${encodeURIComponent(detalle.titulo.split(" - ")[1])}&barrio=${encodeURIComponent(detalle.titulo.split(" - ")[2])}`,
+                      `Stock_${detalle.titulo.split(" - ")[2].replace(/\s+/g, "_")}.xlsx`
+                    )}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Descargar Excel
+                  </button>
+                  <button onClick={() => setDetalle(null)} className="px-4 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-all">
+                    Cerrar
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => downloadExcel(
-                    `${API_URL}/stock/exportar?departamento=${encodeURIComponent(detalle.titulo.split(" - ")[0])}&localidad=${encodeURIComponent(detalle.titulo.split(" - ")[1])}&barrio=${encodeURIComponent(detalle.titulo.split(" - ")[2])}`,
-                    `Stock_${detalle.titulo.split(" - ")[2].replace(/\s+/g, "_")}.xlsx`
-                  )}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                  Descargar Excel
-                </button>
-                <button onClick={() => setDetalle(null)} className="px-4 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-all">
-                  Cerrar
-                </button>
-              </div>
-            </div>
 
             <div className="table-wrap">
               <div className="overflow-x-auto">
@@ -198,21 +211,29 @@ export default function StockTab() {
                     </tr>
                   </thead>
                   <tbody>
-                    {detalle.items.map((item, idx) => (
-                      <tr key={idx} className="border-t border-slate-200 hover:bg-slate-50">
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{idx + 1}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Barrio || ""}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200 font-semibold text-slate-800">{getBeneficiario(item)}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200 font-mono text-xs">{getDNI(item)}</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
-                        <td className="px-3 py-2 text-sm text-center border border-slate-200 text-slate-300">—</td>
+                    {detalle.loading ? (
+                      <tr>
+                        <td colSpan={11} className="text-center py-8 text-slate-400 text-sm">
+                          Cargando datos del Excel…
+                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      (detalle.stockData || []).map((item, idx) => (
+                        <tr key={idx} className="border-t border-slate-200 hover:bg-slate-50">
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{idx + 1}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Barrio || ""}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Mza || ""}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Lote || ""}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200 font-semibold text-slate-800">{item.Beneficiario || ""}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200 font-mono text-xs">{item.DNI || ""}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Telefono || ""}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Cotitular || ""}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.CotitularDNI || ""}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.TelefonoCotitular || ""}</td>
+                          <td className="px-3 py-2 text-sm text-center border border-slate-200">{item.Asistencia || ""}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

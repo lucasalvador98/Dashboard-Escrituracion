@@ -13,6 +13,8 @@ services:
       default:  
     ports:
       - "8507:8000"
+    volumes:
+      - /home/lucaa/ESCRITURACION:/app/data:ro
     environment:
       - GOOGLE_CLOUD_SERVICE_ACCOUNT=${GOOGLE_CLOUD_SERVICE_ACCOUNT}
 

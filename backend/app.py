@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from utils.google_sheets import cargar_datos
-from utils.stock_data import generar_excel
+from utils.stock_data import generar_excel, leer_datos_excel
 import json
 import os
 from dotenv import load_dotenv
@@ -47,6 +47,27 @@ def obtener_datos(skip: int = 0, limit: int = 50, filtro_estado: str = None):
         return {"total": total, "data": datos}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al procesar los datos: {str(e)}")
+
+
+# ─── Stock / Datos desde Excel ───────────────────────────────────────────────
+
+@app.get("/stock/datos")
+def obtener_datos_stock(
+    barrio: str = Query(None),
+):
+    """
+    Devuelve los datos del Excel modelo de VILLA CARLOS PAZ como JSON,
+    con todos los campos (Barrio, Mza, Lote, Beneficiario, DNI, Telefono,
+    Cotitular, CotitularDNI, TelefonoCotitular, Asistencia).
+    Opcionalmente filtra por barrio.
+    """
+    try:
+        datos = leer_datos_excel()
+        if barrio:
+            datos = [d for d in datos if d.get("Barrio", "").upper() == barrio.upper()]
+        return JSONResponse(content=datos)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al leer datos de stock: {str(e)}")
 
 
 # ─── Stock / Exportar Excel ──────────────────────────────────────────────────
