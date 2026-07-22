@@ -4,28 +4,14 @@ import Escrituracion from "./Escrituracion";
 import StockTab from "./StockTab";
 import MontosTab from "./MontosTab";
 
-const TABS = ["ESCRITURACION", "STOCK", "MONTOS"];
-
 export default function App() {
   const [activeTab, setActiveTab] = useState("ESCRITURACION");
-
-  function goPrev() {
-    const idx = TABS.indexOf(activeTab);
-    setActiveTab(TABS[(idx - 1 + TABS.length) % TABS.length]);
-  }
-
-  function goNext() {
-    const idx = TABS.indexOf(activeTab);
-    setActiveTab(TABS[(idx + 1) % TABS.length]);
-  }
 
   return (
     <div className="app-root">
       <Sidebar
         active={activeTab}
         onSelect={setActiveTab}
-        onPrev={goPrev}
-        onNext={goNext}
       />
 
       <div className="app-content">

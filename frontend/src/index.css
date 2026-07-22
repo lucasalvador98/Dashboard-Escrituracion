@@ -26,7 +26,7 @@ body {
 }
 
 .app-sidebar {
-  @apply w-72 bg-white border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)];
+  @apply w-56 bg-white border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)];
 }
 
 
