@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
 import SelectFilters from "./components/SelectFilters";
+import SlidePanel from "./components/SlidePanel";
 import API_CONFIG from "./config-api";
 
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
@@ -142,44 +143,35 @@ export default function StockTab() {
         </div>
       )}
 
-      {/* Modal de detalle — MISMO FORMATO que el Excel modelo */}
-      {detalle && (
-        <div
-          style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
-          onClick={() => setDetalle(null)}
-        >
-          <div style={{ background: "#fff", padding: "2rem", borderRadius: "12px", minWidth: "90vw", maxWidth: "1200px", maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">
-                  {detalle.titulo}
-                </h3>
-              <p className="text-sm text-slate-500 font-medium">
-                    TU CASA TU ESCRITURA - Ley 9811
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => downloadExcel(
-                      `${API_URL}/stock/exportar?departamento=${encodeURIComponent(detalle.titulo.split(" - ")[0])}&localidad=${encodeURIComponent(detalle.titulo.split(" - ")[1])}&barrio=${encodeURIComponent(detalle.titulo.split(" - ")[2])}`,
-                      `Stock_${detalle.titulo.split(" - ")[2].replace(/\s+/g, "_")}.xlsx`
-                    )}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="7 10 12 15 17 10"/>
-                      <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    Descargar Excel
-                  </button>
-                  <button onClick={() => setDetalle(null)} className="px-4 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-all">
-                    Cerrar
-                  </button>
-                </div>
+      {/* Panel lateral de detalle */}
+      <SlidePanel
+        isOpen={!!detalle}
+        onClose={() => setDetalle(null)}
+        title={detalle ? detalle.titulo : ""}
+      >
+        {detalle && (() => {
+          return (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-slate-500 font-medium">
+                  TU CASA TU ESCRITURA - Ley 9811
+                </p>
+                <button
+                  onClick={() => downloadExcel(
+                    `${API_URL}/stock/exportar?departamento=${encodeURIComponent(detalle.titulo.split(" - ")[0])}&localidad=${encodeURIComponent(detalle.titulo.split(" - ")[1])}&barrio=${encodeURIComponent(detalle.titulo.split(" - ")[2])}`,
+                    `Stock_${detalle.titulo.split(" - ")[2].replace(/\s+/g, "_")}.xlsx`
+                  )}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Descargar Excel
+                </button>
               </div>
 
-            <div className="table-wrap">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
                   <thead>
@@ -226,9 +218,9 @@ export default function StockTab() {
                 </table>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
+      </SlidePanel>
     </div>
   );
 }

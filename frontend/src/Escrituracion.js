@@ -2,6 +2,8 @@ import React, { useMemo, useState, useRef, useEffect } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
 import SelectFilters from "./components/SelectFilters";
+import SlidePanel from "./components/SlidePanel";
+import TimelineBar from "./components/TimelineBar";
 
 const itemsPerPage = 15;
 
@@ -331,7 +333,7 @@ export default function Escrituracion() {
                       <td>{item.Departamento}</td>
                       <td>{item.Localidad}</td>
                       <td>{item.Barrio}</td>
-                      <td className="font-semibold text-slate-800">{item.Beneficiario}</td>
+                      <td className="font-semibold text-slate-800">{item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre}</td>
                       <td className="font-mono text-xs">{item.DNI}</td>
                       <td className="text-slate-500 text-xs">{escribano}</td>
                       <td>
@@ -378,81 +380,92 @@ export default function Escrituracion() {
         </div>
       )}
 
-      {/* Modal detalle de fechas por intervalo */}
-      {intervalDetail && (() => {
-        const iv = intervalDetail.interval;
-        const item = intervalDetail.item;
-        const val = item[iv.key];
-        const cls = diffClass(val, iv.esperado);
-        const fecha1Val = item[iv.fecha1] || "—";
-        const fecha2Val = item[iv.fecha2] || "—";
-        return (
-          <div
-            className="modal-overlay"
-            onClick={() => setIntervalDetail(null)}
-          >
-            <div className="modal-card" onClick={e => e.stopPropagation()}>
+      {/* SlidePanel detalle de fechas por intervalo */}
+      <SlidePanel
+        isOpen={!!intervalDetail}
+        onClose={() => setIntervalDetail(null)}
+        title={intervalDetail ? intervalDetail.interval.fullLabel : "Detalle"}
+      >
+        {intervalDetail && (() => {
+          const iv = intervalDetail.interval;
+          const item = intervalDetail.item;
+          const val = item[iv.key];
+          const cls = diffClass(val, iv.esperado);
+          const fecha1Val = item[iv.fecha1] || "—";
+          const fecha2Val = item[iv.fecha2] || "—";
+          return (
+            <div>
               {/* Header */}
-              <div className="modal-header">
-                <div>
-                  <h3 className="modal-title">{iv.fullLabel}</h3>
-                  <p className="modal-subtitle">
-                    {item.Beneficiario}{item.DNI ? ` — DNI ${item.DNI}` : ""}
-                  </p>
-                </div>
-                <button
-                  className="modal-close"
-                  onClick={() => setIntervalDetail(null)}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                </button>
+              <div className="mb-4">
+                <h4 className="text-base font-semibold text-slate-800 mb-1">{iv.fullLabel}</h4>
+                <p className="text-sm text-slate-600">
+                   {(item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre)}{item.DNI ? ` — DNI ${item.DNI}` : ""}
+                </p>
               </div>
 
-              <div className="modal-body">
-                {/* Fechas */}
-                <div className="detail-dates-row">
-                  <div className="date-card">
-                    <div className="date-label">Desde</div>
-                    <div className="date-field">{iv.fecha1}</div>
-                    <div className="date-value">{fecha1Val}</div>
-                  </div>
-                  <div className="date-arrow">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
-                  </div>
-                  <div className="date-card">
-                    <div className="date-label">Hasta</div>
-                    <div className="date-field">{iv.fecha2}</div>
-                    <div className="date-value">{fecha2Val}</div>
-                  </div>
-                </div>
+              {/* Timeline visual */}
+              <div className="mb-6">
+                <div className="text-xs font-medium text-slate-500 uppercase mb-2">Progreso General</div>
+                <TimelineBar
+                  item={item}
+                  intervals={INTERVALS}
+                />
+              </div>
 
-                {/* Resultado */}
-                <div className="detail-result">
-                  <div className="result-label">Diferencia</div>
-                  <div className="result-value-row">
-                    <span className={`diff-badge ${cls}`} style={{ fontSize: '1rem', padding: '0.25rem 1rem' }}>
-                      {val !== "N/A" && val !== "" && val != null ? `${val} días hábiles` : "Sin datos"}
-                    </span>
-                    <span className="result-threshold">
-                      Plazo esperado: <strong>{iv.esperado} días</strong>
-                    </span>
-                  </div>
+              {/* Fechas */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-xs font-medium text-slate-500 uppercase mb-1">Desde</div>
+                  <div className="text-sm font-semibold text-slate-700">{iv.fecha1}</div>
+                  <div className="text-lg text-slate-900">{fecha1Val}</div>
                 </div>
+                <div className="flex items-center justify-center">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round">
+                    <path d="M5 12h14"/><path d="M12 5l7 7-7 7"/>
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs font-medium text-slate-500 uppercase mb-1">Hasta</div>
+                  <div className="text-sm font-semibold text-slate-700">{iv.fecha2}</div>
+                  <div className="text-lg text-slate-900">{fecha2Val}</div>
+                </div>
+              </div>
 
-                {/* Info adicional */}
-                <div className="detail-meta">
-                  <span>Departamento: {item.Departamento || "—"}</span>
-                  <span>Localidad: {item.Localidad || "—"}</span>
-                  <span>Barrio: {item.Barrio || "—"}</span>
-                  <span>Estado: {item.Estado || "—"}</span>
+              {/* Resultado */}
+              <div className="mb-6">
+                <div className="text-xs font-medium text-slate-500 uppercase mb-2">Diferencia</div>
+                <div className="flex items-center gap-4">
+                  <span className={`diff-badge ${cls} text-base px-4 py-2`}>                    {val !== "N/A" && val !== "" && val != null ? `${val} días hábiles` : "Sin datos"}
+                    </span>
+                  <span className="text-sm text-slate-600">
+                    Plazo esperado: <strong>{iv.esperado} días</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Info adicional */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Departamento:</span>
+                  <span className="font-medium">{item.Departamento || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Localidad:</span>
+                  <span className="font-medium">{item.Localidad || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Barrio:</span>
+                  <span className="font-medium">{item.Barrio || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Estado:</span>
+                  <span className="font-medium">{item.Estado || "—"}</span>
                 </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
+      </SlidePanel>
     </>
   );
 }
