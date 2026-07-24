@@ -4,6 +4,7 @@ import DashboardTab from "./DashboardTab";
 import Escrituracion from "./Escrituracion";
 import StockTab from "./StockTab";
 import MontosTab from "./MontosTab";
+import EscribanosTab from "./EscribanosTab";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(0); // 0: Dashboard, 1: Escrituracion, 2: Stock, 3: Montos, 4: Escribanos
