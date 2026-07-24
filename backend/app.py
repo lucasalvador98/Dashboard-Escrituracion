@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from utils.google_sheets import cargar_datos
 from utils.stock_data import generar_excel
+from utils.firma_data import generar_firma_excel
 import json
 import os
 from dotenv import load_dotenv
@@ -104,3 +105,56 @@ def exportar_excel_stock(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar Excel: {str(e)}")
+
+
+# ─── Stock En Trámite / Exportar FIRMA Excel ─────────────────────────────────
+
+@app.get("/stock/firma/exportar")
+def exportar_firma_excel(
+    departamento: str = Query(None),
+    localidad: str = Query(None),
+    barrio: str = Query(None),
+    fecha: str = Query(""),
+    hora: str = Query(""),
+    lugar: str = Query(""),
+    escribano_nombre: str = Query(""),
+    escribano_tel: str = Query(""),
+    escribano_mail: str = Query(""),
+):
+    """
+    Genera un Excel con formato FIRMA (En Trámite) para un evento de firma.
+    """
+    try:
+        sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
+        datos = cargar_datos(sheet_url, _get_creds())
+
+        # Filtrar solo En Trámite
+        datos = [d for d in datos if (d.get("Estado") or "").strip() == "En Trámite"]
+
+        # Filtrar por ubicación
+        if departamento:
+            datos = [d for d in datos if (d.get("Departamento") or "").upper() == departamento.upper()]
+        if localidad:
+            datos = [d for d in datos if (d.get("Localidad") or "").upper() == localidad.upper()]
+        if barrio:
+            datos = [d for d in datos if (d.get("Barrio") or "").upper() == barrio.upper()]
+
+        partes = [p for p in [departamento, localidad, barrio] if p]
+        titulo = " / ".join(partes) if partes else "En Trámite"
+
+        buffer = generar_firma_excel(
+            datos, titulo=titulo,
+            fecha=fecha, hora=hora, lugar=lugar,
+            escribano_nombre=escribano_nombre,
+            escribano_tel=escribano_tel,
+            escribano_mail=escribano_mail,
+        )
+        filename = f"Firma_{partes[-1] if partes else 'General'}.xlsx".replace(" ", "_")
+
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al generar Excel de firma: {str(e)}")

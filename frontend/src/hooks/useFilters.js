@@ -27,12 +27,16 @@ export default function useFilters(initial = {}) {
       if (f.localidad && f.localidad !== "Todos" && item.Localidad && !item.Localidad.toUpperCase().includes((f.localidad || "").trim().toUpperCase())) return false;
       if (f.barrio && f.barrio !== "Todos" && item.Barrio && !item.Barrio.toUpperCase().includes((f.barrio || "").trim().toUpperCase())) return false;
       if (f.estado && f.estado !== "Todos" && item.Estado && !item.Estado.toUpperCase().includes((f.estado || "").trim().toUpperCase())) return false;
-      // Escribano: prueba múltiples variantes del campo
-      const itemEscribano = getEscribano(item);
-      if (f.escribano && itemEscribano && !itemEscribano.toUpperCase().includes((f.escribano || "").trim().toUpperCase())) return false;
       // DNI: prueba múltiples variantes
       const itemDNI = getDNI(item);
-      if (f.dni && itemDNI && !String(itemDNI).includes(f.dni)) return false;
+      if (f.dni) {
+        if (!itemDNI || !String(itemDNI).includes(f.dni)) return false;
+      }
+      // Escribano: prueba múltiples variantes del campo
+      const itemEscribano = getEscribano(item);
+      if (f.escribano) {
+        if (!itemEscribano || !itemEscribano.toUpperCase().includes((f.escribano || "").trim().toUpperCase())) return false;
+      }
       return true;
     });
   }, [filters]);

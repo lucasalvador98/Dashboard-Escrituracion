@@ -28,6 +28,15 @@ THIN_BORDER = Border(
 HEADER_FILL = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
 
 
+def _get(item, *keys):
+    """Busca múltiples variantes del nombre de campo."""
+    for k in keys:
+        v = item.get(k)
+        if v is not None and v != "":
+            return v
+    return ""
+
+
 def generar_excel(datos, titulo="", subtitulo=""):
     """
     Genera un Excel en memoria con el formato del modelo de VILLA CARLOS PAZ.
@@ -78,39 +87,39 @@ def generar_excel(datos, titulo="", subtitulo=""):
         ws.cell(row_num, 2).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 2).border = THIN_BORDER
 
-        ws.cell(row_num, 3, item.get("Mza") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 3, _get(item, "Mza. Plano", "Mza. Oficial", "Mza", "MZA", "mza")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 3).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 3).border = THIN_BORDER
 
-        ws.cell(row_num, 4, item.get("Lote") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 4, _get(item, "Lote Plano", "Lote oficial", "Lote Oficial", "Lote", "LOTE")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 4).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 4).border = THIN_BORDER
 
-        ws.cell(row_num, 5, item.get("Beneficiario") or item.get("APELLIDO Y NOMBRE") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 5, _get(item, "Beneficiarios", "Beneficiario", "APELLIDO Y NOMBRE", "ApellidoYNombre", "Nombre")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 5).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 5).border = THIN_BORDER
 
-        ws.cell(row_num, 6, item.get("DNI") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 6, _get(item, "DNI", "dni", "documento")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 6).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 6).border = THIN_BORDER
 
-        ws.cell(row_num, 7, item.get("Telefono") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 7, _get(item, "Telefono", "telefono", "Teléfono")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 7).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 7).border = THIN_BORDER
 
-        ws.cell(row_num, 8, item.get("Cotitular") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 8, _get(item, "COTITULAR Nombre y Apellido", "COTITULAR - Nombre y Apellido", "Cotitular")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 8).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 8).border = THIN_BORDER
 
-        ws.cell(row_num, 9, item.get("CotitularDNI") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 9, _get(item, "COTITULAR DNI", "COTITULAR - DNI", "CotitularDNI")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 9).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 9).border = THIN_BORDER
 
-        ws.cell(row_num, 10, item.get("TelefonoCotitular") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 10, _get(item, "COTITULAR Telefono", "Tel. Cotitular", "TelefonoCotitular")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 10).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 10).border = THIN_BORDER
 
-        ws.cell(row_num, 11, item.get("Asistencia") or "").font = Font(name="Arial", size=12)
+        ws.cell(row_num, 11, _get(item, "Asistencia", "ASISTENCIA")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 11).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 11).border = THIN_BORDER
 
