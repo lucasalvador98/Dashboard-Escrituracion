@@ -573,13 +573,8 @@ body {
 .pill-default { @apply bg-slate-100 text-slate-600; }
 
 /* Compactar tabla data-table para la matriz */
-.matrix-table th,
-.matrix-table td {
-  white-space: nowrap;
-  font-size: 0.8125rem;
-}
-
 .matrix-table th {
+  white-space: nowrap;
   padding: 0.75rem 0.625rem !important;
   font-size: 0.7rem !important;
   letter-spacing: 0.05em;
@@ -587,6 +582,18 @@ body {
 
 .matrix-table td {
   padding: 0.5rem 0.625rem !important;
+  font-size: 0.8125rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 280px;
+}
+
+/* Columnas que NO deben doblarse */
+.matrix-table td.row-num,
+.matrix-table td.diff-cell,
+.matrix-table td .status-pill,
+.matrix-table td .font-mono {
+  white-space: nowrap;
 }
 
 /* No hay subrayado hover masivo en matrix */
