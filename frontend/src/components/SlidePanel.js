@@ -26,7 +26,7 @@ export default function SlidePanel({ isOpen, onClose, title, children }) {
 
       {/* Slide panel */}
       <div
-        className={`slide-panel fixed top-0 right-0 h-full w-[480px] max-w-full z-50 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`slide-panel fixed top-0 right-0 h-full w-[600px] max-w-full z-50 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">

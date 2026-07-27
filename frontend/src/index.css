@@ -72,6 +72,11 @@ body {
   @apply text-xs text-gray-500 mt-1;
 }
 
+.kpi-card.accent-total { border-left: 4px solid #3b82f6; }
+.kpi-card.accent-proceso { border-left: 4px solid #f59e0b; }
+.kpi-card.accent-finalizadas { border-left: 4px solid #10b981; }
+.kpi-card.accent-proximas { border-left: 4px solid #8b5cf6; }
+
 /* Chart container styles */
 .chart-container {
   @apply bg-white rounded-lg shadow-sm border border-gray-200 p-5;
@@ -98,33 +103,7 @@ body {
   @apply font-semibold bg-gray-50;
 }
 
-/* Modal overlay for existing modals (keep for now) */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 1;
-  transition: opacity 0.3s ease;
-}
 
-.modal-overlay.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.modal-card {
-  background-color: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 90vw;
-  max-height: 85vh;
-  overflow-y: auto;
-}
 
 /* Layout principal */
 .app-root {

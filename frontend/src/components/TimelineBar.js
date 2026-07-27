@@ -19,7 +19,7 @@ function diffClass(val, esperado) {
   return "red";
 }
 
-export default function TimelineBar({ stages = STAGES, intervals = [], item }) {
+export default function TimelineBar({ stages = STAGES, intervals = [], item, highlightedInterval }) {
   if (!item) return null;
 
   const getSegmentStatus = (stage, interval) => {
@@ -46,10 +46,13 @@ export default function TimelineBar({ stages = STAGES, intervals = [], item }) {
             bgColor = "bg-blue-400";
           }
 
+          const relevantInterval = idx > 0 && intervals[idx - 1] ? intervals[idx - 1] : null;
+          const isHighlighted = relevantInterval && highlightedInterval && highlightedInterval === relevantInterval.key;
+
           return (
             <div key={idx} className="flex flex-col items-center">
               <div 
-                className={`tl-segment ${bgColor} ${status === "empty" ? "opacity-30" : "opacity-100"}`}
+                className={`tl-segment ${bgColor} ${status === "empty" ? "opacity-30" : "opacity-100"} ${isHighlighted ? "ring-2 ring-blue-500 shadow-md transform scale-110" : ""}`}
                 title={`${stage.label}: ${interval ? item[stage.field] || "—" : "—"}`}
               />
               <div className="text-xs text-slate-600 mt-1 text-center truncate max-w-[60px]">

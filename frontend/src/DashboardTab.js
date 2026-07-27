@@ -1,6 +1,10 @@
 import React, { useMemo } from "react";
 import useDataLoader from "./hooks/useDataLoader";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import Description from '@mui/icons-material/Description';
+import HourglassEmpty from '@mui/icons-material/HourglassEmpty';
+import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
+import EventNote from '@mui/icons-material/EventNote';
 
 export default function DashboardTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
@@ -82,25 +86,29 @@ export default function DashboardTab() {
     <div className="space-y-6">
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="kpi-card">
+        <div className="kpi-card accent-total">
+          <Description sx={{ color: '#3b82f6', fontSize: 28 }} className="mb-2" />
           <div className="label">Total Escrituraciones</div>
           <div className="value">{kpis.total.toLocaleString()}</div>
           <div className="meta">En total</div>
         </div>
 
-        <div className="kpi-card">
+        <div className="kpi-card accent-proceso">
+          <HourglassEmpty sx={{ color: '#f59e0b', fontSize: 28 }} className="mb-2" />
           <div className="label">En Proceso</div>
           <div className="value">{kpis.enProceso.toLocaleString()}</div>
           <div className="meta">Actualmente en trámite</div>
         </div>
 
-        <div className="kpi-card">
+        <div className="kpi-card accent-finalizadas">
+          <CheckCircleOutline sx={{ color: '#10b981', fontSize: 28 }} className="mb-2" />
           <div className="label">Finalizadas este Mes</div>
           <div className="value">{kpis.finalizadasEsteMes.toLocaleString()}</div>
           <div className="meta">Firmadas en {new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' })}</div>
         </div>
 
-        <div className="kpi-card">
+        <div className="kpi-card accent-proximas">
+          <EventNote sx={{ color: '#8b5cf6', fontSize: 28 }} className="mb-2" />
           <div className="label">Próximas 10 Firmas</div>
           <div className="value">{kpis.proximasDiezFirmas.length}</div>
           <div className="meta">Programadas próximamente</div>
@@ -111,13 +119,15 @@ export default function DashboardTab() {
       <div className="chart-container">
         <h3 className="chart-title">Escrituraciones por Mes (Ingreso Colegio)</h3>
         {kpis.chartData && kpis.chartData.length > 0 ? (
-          <BarChart width={0} height={300} data={kpis.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Bar dataKey="escrituraciones" fill="#3b82f6" />
-          </BarChart>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={kpis.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="escrituraciones" fill="#2563eb" />
+            </BarChart>
+          </ResponsiveContainer>
         ) : (
           <div className="text-center py-12 text-slate-400">
             No hay datos disponibles para mostrar el gráfico

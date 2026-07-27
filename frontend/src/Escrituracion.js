@@ -4,6 +4,9 @@ import useFilters from "./hooks/useFilters";
 import SelectFilters from "./components/SelectFilters";
 import SlidePanel from "./components/SlidePanel";
 import TimelineBar from "./components/TimelineBar";
+import LocationOn from '@mui/icons-material/LocationOn';
+import CalendarToday from '@mui/icons-material/CalendarToday';
+import ArrowForward from '@mui/icons-material/ArrowForward';
 
 const itemsPerPage = 15;
 
@@ -393,11 +396,16 @@ export default function Escrituracion() {
           const cls = diffClass(val, iv.esperado);
           const fecha1Val = item[iv.fecha1] || "—";
           const fecha2Val = item[iv.fecha2] || "—";
+          const statusLabels = { green: '✅ Dentro del plazo', yellow: '⚠️ Alerta', red: '🔴 Demora', gray: '⚪ Sin datos' };
+          const statusLabel = statusLabels[cls] || 'Sin datos';
           return (
-            <div>
-              {/* Header */}
+            <div className="p-1">
+              {/* Header with status pill */}
               <div className="mb-4">
-                <h4 className="text-base font-semibold text-slate-800 mb-1">{iv.fullLabel}</h4>
+                <div className="flex items-center gap-3 mb-2">
+                  <h4 className="text-base font-semibold text-slate-800">{iv.fullLabel}</h4>
+                  <span className={`diff-badge ${cls}`}>{statusLabel}</span>
+                </div>
                 <p className="text-sm text-slate-600">
                    {(item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre)}{item.DNI ? ` — DNI ${item.DNI}` : ""}
                 </p>
@@ -409,58 +417,44 @@ export default function Escrituracion() {
                 <TimelineBar
                   item={item}
                   intervals={INTERVALS}
+                  highlightedInterval={iv.key}
                 />
               </div>
 
-              {/* Fechas */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-xs font-medium text-slate-500 uppercase mb-1">Desde</div>
-                  <div className="text-sm font-semibold text-slate-700">{iv.fecha1}</div>
-                  <div className="text-lg text-slate-900">{fecha1Val}</div>
+              {/* Fechas lado a lado */}
+              <div className="detail-dates-row">
+                <div className="date-card">
+                  <div className="date-label"><CalendarToday sx={{ fontSize: 12, marginRight: 0.5 }} />{iv.fecha1}</div>
+                  <div className="date-value">{fecha1Val}</div>
                 </div>
-                <div className="flex items-center justify-center">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round">
-                    <path d="M5 12h14"/><path d="M12 5l7 7-7 7"/>
-                  </svg>
+                <div className="date-arrow">
+                  <ArrowForward />
                 </div>
-                <div className="text-center">
-                  <div className="text-xs font-medium text-slate-500 uppercase mb-1">Hasta</div>
-                  <div className="text-sm font-semibold text-slate-700">{iv.fecha2}</div>
-                  <div className="text-lg text-slate-900">{fecha2Val}</div>
+                <div className="date-card">
+                  <div className="date-label"><CalendarToday sx={{ fontSize: 12, marginRight: 0.5 }} />{iv.fecha2}</div>
+                  <div className="date-value">{fecha2Val}</div>
                 </div>
               </div>
 
               {/* Resultado */}
-              <div className="mb-6">
-                <div className="text-xs font-medium text-slate-500 uppercase mb-2">Diferencia</div>
-                <div className="flex items-center gap-4">
-                  <span className={`diff-badge ${cls} text-base px-4 py-2`}>                    {val !== "N/A" && val !== "" && val != null ? `${val} días hábiles` : "Sin datos"}
-                    </span>
-                  <span className="text-sm text-slate-600">
+              <div className="detail-result">
+                <div className="result-label">Diferencia</div>
+                <div className="result-value-row">
+                  <span className={`diff-badge ${cls} text-base px-4 py-2`}>
+                    {val !== "N/A" && val !== "" && val != null ? `${val} días hábiles` : "Sin datos"}
+                  </span>
+                  <span className="result-threshold">
                     Plazo esperado: <strong>{iv.esperado} días</strong>
                   </span>
                 </div>
               </div>
 
-              {/* Info adicional */}
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Departamento:</span>
-                  <span className="font-medium">{item.Departamento || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Localidad:</span>
-                  <span className="font-medium">{item.Localidad || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Barrio:</span>
-                  <span className="font-medium">{item.Barrio || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Estado:</span>
-                  <span className="font-medium">{item.Estado || "—"}</span>
-                </div>
+              {/* Meta info */}
+              <div className="detail-meta">
+                <div><LocationOn sx={{ fontSize: 14, verticalAlign: 'middle', marginRight: 0.5 }} /> Departamento: {item.Departamento || "—"}</div>
+                <div>Localidad: {item.Localidad || "—"}</div>
+                <div>Barrio: {item.Barrio || "—"}</div>
+                <div>Estado: {item.Estado || "—"}</div>
               </div>
             </div>
           );
