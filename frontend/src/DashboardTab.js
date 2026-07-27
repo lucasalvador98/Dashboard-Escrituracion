@@ -26,7 +26,9 @@ export default function DashboardTab() {
 
     const proximasDiezFirmas = data
       .filter(item => item["Fecha de Firma"] && item["Fecha de Firma"] !== "N/A")
-      .sort((a, b) => new Date(a["Fecha de Firma"]) - new Date(b["Fecha de Firma"]))
+      .map(item => ({ ...item, _fechaFirmaDate: new Date(item["Fecha de Firma"]) }))
+      .filter(item => !isNaN(item._fechaFirmaDate) && item._fechaFirmaDate >= new Date(today.getFullYear() - 1, 0, 1))
+      .sort((a, b) => a._fechaFirmaDate - b._fechaFirmaDate)
       .slice(0, 10)
       .map(item => ({
         beneficiario: item.Beneficiarios ?? item.Beneficiario,
@@ -39,17 +41,19 @@ export default function DashboardTab() {
     data.forEach(item => {
       if (item["Fecha Ingreso Colegio de Escribanos"] && item["Fecha Ingreso Colegio de Escribanos"] !== "N/A") {
         const fecha = new Date(item["Fecha Ingreso Colegio de Escribanos"]);
-        const monthKey = fecha.toLocaleString('es-ES', { month: 'short' });
+        const monthKey = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
         monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1;
       }
     });
 
     const chartData = Object.entries(monthlyData)
-      .map(([month, count]) => ({ month, escrituraciones: count }))
-      .sort((a, b) => {
-        const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-        return months.indexOf(a.month.toLowerCase()) - months.indexOf(b.month.toLowerCase());
-      });
+      .map(([key, count]) => {
+        const [year, monthNum] = key.split('-');
+        const fecha = new Date(+year, +monthNum - 1);
+        const label = fecha.toLocaleString('es-ES', { month: 'short', year: 'numeric' });
+        return { month: label, _sortKey: key, escrituraciones: count };
+      })
+      .sort((a, b) => a._sortKey.localeCompare(b._sortKey));
 
     return {
       total,
