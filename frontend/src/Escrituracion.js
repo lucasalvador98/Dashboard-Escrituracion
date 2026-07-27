@@ -1,12 +1,16 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
+import useExportCSV from "./hooks/useExportCSV";
 import SelectFilters from "./components/SelectFilters";
 import SlidePanel from "./components/SlidePanel";
 import TimelineBar from "./components/TimelineBar";
+import ColumnToggle from "./components/ColumnToggle";
 import LocationOn from '@mui/icons-material/LocationOn';
 import CalendarToday from '@mui/icons-material/CalendarToday';
 import ArrowForward from '@mui/icons-material/ArrowForward';
+import FileDownload from '@mui/icons-material/FileDownload';
+import ViewColumn from '@mui/icons-material/ViewColumn';
 
 const itemsPerPage = 15;
 
@@ -20,6 +24,25 @@ const INTERVALS = [
 ];
 
 const INTERVAL_KEYS = INTERVALS.map(i => i.key);
+
+// Columnas de la tabla para export y toggle de visibilidad
+const TABLE_COLUMNS = [
+  { key: "Departamento", label: "Departamento", alwaysOn: true },
+  { key: "Localidad", label: "Localidad", alwaysOn: true },
+  { key: "Barrio", label: "Barrio", alwaysOn: true },
+  { key: "Beneficiarios", label: "Beneficiario", alwaysOn: true },
+  { key: "DNI", label: "DNI", alwaysOn: true },
+  { key: "Escribano Designado", label: "Escribano", alwaysOn: false },
+  { key: "Estado", label: "Estado", alwaysOn: true },
+  ...INTERVALS.map(iv => ({ key: iv.key, label: iv.label, fullLabel: iv.fullLabel, alwaysOn: false })),
+];
+
+const COLUMN_GROUPS = [
+  { label: "Ubicación", keys: ["Departamento", "Localidad", "Barrio"] },
+  { label: "Partes", keys: ["Beneficiarios", "DNI", "Escribano Designado"] },
+  { label: "Estado", keys: ["Estado"] },
+  { label: "Plazos", keys: INTERVAL_KEYS },
+];
 
 // Columnas que contienen fechas reales (para sort seguro)
 const DATE_COLS = new Set([
@@ -90,6 +113,49 @@ export default function Escrituracion() {
   const [page, setPage] = useState(1);
   const [intervalDetail, setIntervalDetail] = useState(null);
   const [selectedEstado, setSelectedEstado] = useState(null);
+  const [showColToggle, setShowColToggle] = useState(false);
+  const [visibleCols, setVisibleCols] = useState(() => {
+    const saved = localStorage.getItem("escrituracion_visibleCols");
+    return saved ? JSON.parse(saved) : TABLE_COLUMNS.filter(c => c.alwaysOn).map(c => c.key);
+  });
+
+  // Columnas de export: todas las columnas visibles
+  const exportColumns = useMemo(() => {
+    return TABLE_COLUMNS.filter(c => visibleCols.includes(c.key)).map(c => ({
+      key: c.key,
+      label: c.label,
+    }));
+  }, [visibleCols]);
+
+  const { exportCSV } = useExportCSV({
+    data: sortedData,
+    filename: `Escrituracion_${new Date().toISOString().slice(0, 10)}`,
+    columns: exportColumns,
+  });
+
+  // Click en celda → filtra por ese valor
+  const filterByField = useCallback((field, value) => {
+    if (!value || value === "N/A") return;
+    if (field === "Escribano Designado") {
+      setFilters({ escribano: value });
+    } else if (field === "Estado") {
+      setSelectedEstado(value);
+      setFilters({ estado: value });
+    } else if (field === "Departamento" || field === "Localidad" || field === "Barrio") {
+      setFilters({ [field.toLowerCase()]: value });
+    }
+    setPage(1);
+  }, [setFilters]);
+
+  function toggleColumn(colKey) {
+    setVisibleCols(prev => {
+      const next = prev.includes(colKey)
+        ? prev.filter(k => k !== colKey)
+        : [...prev, colKey];
+      localStorage.setItem("escrituracion_visibleCols", JSON.stringify(next));
+      return next;
+    });
+  }
 
   // === Datos procesados ===
   const rawData = Array.isArray(data) ? data : [];
@@ -250,6 +316,33 @@ export default function Escrituracion() {
 
   return (
     <>
+      {/* Toolbar: export + columnas visibles */}
+      <div className="toolbar-row">
+        <button className="toolbar-btn" onClick={exportCSV} title="Exportar CSV">
+          <FileDownload sx={{ fontSize: 16 }} />
+          Exportar
+        </button>
+        <div className="toolbar-group-right">
+          <button
+            className={`toolbar-btn ${showColToggle ? "active" : ""}`}
+            onClick={() => setShowColToggle(prev => !prev)}
+            title="Mostrar/ocultar columnas"
+          >
+            <ViewColumn sx={{ fontSize: 16 }} />
+            Columnas
+          </button>
+          {showColToggle && (
+            <ColumnToggle
+              columns={TABLE_COLUMNS}
+              groups={COLUMN_GROUPS}
+              visibleCols={visibleCols}
+              onToggle={toggleColumn}
+              onClose={() => setShowColToggle(false)}
+            />
+          )}
+        </div>
+      </div>
+
       <SelectFilters data={processedData} filters={filters} setFilters={setFilters} />
 
       {/* Tarjetas de estado (filtro por click) */}
@@ -324,27 +417,27 @@ export default function Escrituracion() {
               <thead>
                 <tr>
                   <th className="row-num">N°</th>
-                  {th("Departamento", "Departamento")}
-                  {th("Localidad", "Localidad")}
-                  {th("Barrio", "Barrio")}
-                  {th("Beneficiario", "Beneficiarios")}
-                  {th("DNI", "DNI")}
-                  {th("Escribano", "Escribano Designado")}
-                  {th("Estado", "Estado")}
-                  {INTERVALS.map(iv => (
-                    <th
-                      key={iv.key}
-                      role="button"
-                      aria-sort={ariaSort(iv.key)}
-                      onClick={() => handleSort(iv.key)}
-                      className="sortable-th diff-th"
-                      title={iv.fullLabel}
-                    >
-                      <span>{iv.label}</span>
-                      <span className="diff-threshold">{iv.esperado}d</span>
-                      {sortIcon(iv.key)}
-                    </th>
-                  ))}
+                  {TABLE_COLUMNS.filter(c => visibleCols.includes(c.key)).map(c =>
+                    c.key.startsWith("diferencia_")
+                      ? (() => {
+                          const iv = INTERVALS.find(i => i.key === c.key);
+                          return iv ? (
+                            <th
+                              key={iv.key}
+                              role="button"
+                              aria-sort={ariaSort(iv.key)}
+                              onClick={() => handleSort(iv.key)}
+                              className="sortable-th diff-th"
+                              title={iv.fullLabel}
+                            >
+                              <span>{iv.label}</span>
+                              <span className="diff-threshold">{iv.esperado}d</span>
+                              {sortIcon(iv.key)}
+                            </th>
+                          ) : null;
+                        })()
+                      : th(c.label, c.key)
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -352,38 +445,64 @@ export default function Escrituracion() {
                   const stableKey = item.id ?? `${item.DNI || "noDNI"}-${idx}-${safePage}`;
                   const escribano = item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";
                   const estado = item.Estado ?? item.estado ?? item.EstadoProceso ?? "";
+                  const beneficiario = item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? "—";
 
                   return (
                     <tr key={stableKey}>
                       <td className="row-num">{idx + 1 + (safePage - 1) * itemsPerPage}</td>
-                      <td>{item.Departamento}</td>
-                      <td>{item.Localidad}</td>
-                      <td>{item.Barrio}</td>
-                      <td className="font-semibold text-slate-800">{item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre}</td>
-                      <td className="font-mono text-xs">{item.DNI}</td>
-                      <td className="text-slate-500 text-xs">{escribano}</td>
-                      <td>
-                        <span className={`status-pill ${estado === "Entregada" ? "pill-green" : estado === "Finalizada sin Entregar" ? "pill-blue" : estado === "De Baja" ? "pill-gray" : estado === "Hipotecada" ? "pill-red" : "pill-default"}`}>
-                          {estado}
-                        </span>
-                      </td>
-                      {INTERVALS.map(iv => {
-                        const val = item[iv.key];
-                        const cls = diffClass(val, iv.esperado);
-                        const fechas = item[iv.fecha1] && item[iv.fecha2]
-                          ? `${item[iv.fecha1]} → ${item[iv.fecha2]}`
-                          : "Fechas no disponibles";
+                      {TABLE_COLUMNS.filter(c => visibleCols.includes(c.key)).map(c => {
+                        if (c.key.startsWith("diferencia_")) {
+                          const iv = INTERVALS.find(i => i.key === c.key);
+                          if (!iv) return null;
+                          const val = item[iv.key];
+                          const cls = diffClass(val, iv.esperado);
+                          const fechas = item[iv.fecha1] && item[iv.fecha2]
+                            ? `${item[iv.fecha1]} → ${item[iv.fecha2]}`
+                            : "Fechas no disponibles";
+                          return (
+                            <td
+                              key={iv.key}
+                              className={`diff-cell ${cls}`}
+                              title={`${iv.fullLabel}\n${fechas}`}
+                              onClick={() => setIntervalDetail({ item, interval: iv })}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <span className="diff-badge">
+                                {val !== "N/A" && val !== "" && val != null ? `${val}d` : "—"}
+                              </span>
+                            </td>
+                          );
+                        }
+
+                        const rawVal = item[c.key];
+                        const displayVal = c.key === "Beneficiarios" ? beneficiario
+                          : c.key === "Escribano Designado" ? escribano
+                          : c.key === "Estado" ? (item.Estado ?? item.estado ?? item.EstadoProceso ?? "")
+                          : rawVal ?? "—";
+
+                        const isClickable = ["Departamento", "Localidad", "Barrio", "Escribano Designado", "Estado"].includes(c.key);
+
                         return (
                           <td
-                            key={iv.key}
-                            className={`diff-cell ${cls}`}
-                            title={`${iv.fullLabel}\n${fechas}`}
-                            onClick={() => setIntervalDetail({ item, interval: iv })}
-                            style={{ cursor: 'pointer' }}
+                            key={c.key}
+                            className={
+                              (c.key === "Beneficiarios" ? "font-semibold text-slate-800" : "") +
+                              (c.key === "DNI" ? " font-mono text-xs" : "") +
+                              (c.key === "Escribano Designado" ? " text-slate-500 text-xs" : "") +
+                              (isClickable ? " cell-clickable" : "")
+                            }
+                            onClick={() => isClickable && filterByField(c.key, rawVal)}
+                            title={isClickable ? `Filtrar por "${displayVal}"` : undefined}
                           >
-                            <span className="diff-badge">
-                              {val !== "N/A" && val !== "" && val != null ? `${val}d` : "—"}
-                            </span>
+                            {c.key === "Estado" ? (
+                              <span className={`status-pill ${displayVal === "Entregada" ? "pill-green" : displayVal === "Finalizada sin Entregar" ? "pill-blue" : displayVal === "De Baja" ? "pill-gray" : displayVal === "Hipotecada" ? "pill-red" : "pill-default"}`}>
+                                {displayVal}
+                              </span>
+                            ) : c.key === "DNI" ? (
+                              <span className="font-mono">{displayVal}</span>
+                            ) : (
+                              displayVal
+                            )}
                           </td>
                         );
                       })}
@@ -393,8 +512,27 @@ export default function Escrituracion() {
 
                 {paginatedData.length === 0 && (
                   <tr>
-                    <td colSpan={8 + INTERVALS.length} className="text-center py-12 text-slate-400 font-medium">
-                      No hay registros que coincidan con los filtros
+                    <td colSpan={1 + TABLE_COLUMNS.filter(c => visibleCols.includes(c.key)).length} className="text-center py-12">
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="text-2xl">🔍</span>
+                        <span className="text-slate-400 font-medium">No hay registros</span>
+                        <span className="text-xs text-slate-300 max-w-xs">
+                          {filters.departamento !== "Todos" || filters.localidad !== "Todos" || filters.barrio !== "Todos" || filters.estado !== "Todos" || filters.escribano || filters.dni || selectedEstado
+                            ? "Probá sacando algunos filtros o limpiando la búsqueda"
+                            : "No hay datos para mostrar en esta sección"}
+                        </span>
+                        {(filters.departamento !== "Todos" || filters.localidad !== "Todos" || filters.barrio !== "Todos" || filters.estado !== "Todos" || filters.escribano || filters.dni || selectedEstado) && (
+                          <button
+                            className="text-xs text-blue-600 font-semibold hover:text-blue-800 mt-1"
+                            onClick={() => {
+                              setFilters({ departamento: "Todos", localidad: "Todos", barrio: "Todos", estado: "Todos", escribano: "", dni: "" });
+                              setSelectedEstado(null);
+                            }}
+                          >
+                            Limpiar todos los filtros
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )}

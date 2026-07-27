@@ -327,3 +327,156 @@
 .pill-red { @apply bg-red-100 text-red-700; }
 .pill-gray { @apply bg-gray-200 text-gray-600; }
 .pill-default { @apply bg-slate-100 text-slate-600; }
+
+/* ─── Toolbar ────────────────────────────────────────── */
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.toolbar-group-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.toolbar-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.toolbar-btn.active {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #93c5fd;
+}
+
+/* ─── Column Toggle ──────────────────────────────────── */
+.col-toggle-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.375rem;
+  min-width: 220px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.col-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.col-toggle-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.col-toggle-close {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+
+.col-toggle-close:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.col-toggle-body {
+  padding: 0.5rem;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.col-toggle-group {
+  margin-bottom: 0.5rem;
+}
+
+.col-toggle-group:last-child {
+  margin-bottom: 0;
+}
+
+.col-toggle-group-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.375rem;
+  margin-bottom: 0.125rem;
+}
+
+.col-toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.375rem;
+  font-size: 0.75rem;
+  color: #334155;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: background 0.1s;
+}
+
+.col-toggle-item:hover {
+  background: #f8fafc;
+}
+
+.col-toggle-item input[type="checkbox"] {
+  accent-color: #3b82f6;
+}
+
+.col-toggle-item input[type="checkbox"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Click-to-filter en celdas ──────────────────────── */
+.cell-clickable {
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  border-radius: 0.25rem;
+}
+
+.cell-clickable:hover {
+  color: #2563eb !important;
+  background: #eff6ff;
+}
