@@ -21,6 +21,16 @@ const INTERVALS = [
 
 const INTERVAL_KEYS = INTERVALS.map(i => i.key);
 
+// Columnas que contienen fechas reales (para sort seguro)
+const DATE_COLS = new Set([
+  "Fecha Ingreso Colegio de Escribanos",
+  "Fecha de Sorteo",
+  "Fecha de Aceptacion",
+  "Fecha de Firma",
+  "Fecha de Ingreso al Registro",
+  "Fecha de envío PT digital",
+]);
+
 function contarDiasHabiles(inicio, fin) {
   let count = 0;
   const current = new Date(inicio);
@@ -109,25 +119,38 @@ export default function Escrituracion() {
     arr.sort((a, b) => {
       const va = a[sortCol];
       const vb = b[sortCol];
-      if (va == null) return 1;
-      if (vb == null) return -1;
-      // Números (diffs, montos)
+
+      // Null/undefined siempre al final
+      if (va == null || va === "") return 1;
+      if (vb == null || vb === "") return -1;
+
+      // Columnas de diferencia (semáforo) — numérico con N/A
       if (INTERVAL_KEYS.includes(sortCol)) {
         const na = va === "N/A" ? Infinity : Number(va);
         const nb = vb === "N/A" ? Infinity : Number(vb);
+        if (isNaN(na) && isNaN(nb)) return 0;
+        if (isNaN(na)) return 1;
+        if (isNaN(nb)) return -1;
         return sortOrder === "asc" ? na - nb : nb - na;
       }
-      // Fechas
-      if (typeof va === "string" && va.includes("/")) {
-        const da = new Date(va.split("/").reverse().join("-"));
-        const db = new Date(vb.split("/").reverse().join("-"));
+
+      // Fechas reales — solo para columnas que sabemos que son fechas
+      if (DATE_COLS.has(sortCol)) {
+        const da = new Date(va);
+        const db = new Date(vb);
+        if (isNaN(da) && isNaN(db)) return 0;
+        if (isNaN(da)) return 1;
+        if (isNaN(db)) return -1;
         return sortOrder === "asc" ? da - db : db - da;
       }
-      // Strings / números
+
+      // Números vanilla
       if (typeof va === "number" && typeof vb === "number") {
         return sortOrder === "asc" ? va - vb : vb - va;
       }
-      const cmp = String(va).localeCompare(String(vb));
+
+      // Strings (localeCompare)
+      const cmp = String(va).localeCompare(String(vb), undefined, { numeric: true });
       return sortOrder === "asc" ? cmp : -cmp;
     });
     return arr;
@@ -304,7 +327,7 @@ export default function Escrituracion() {
                   {th("Departamento", "Departamento")}
                   {th("Localidad", "Localidad")}
                   {th("Barrio", "Barrio")}
-                  {th("Beneficiario", "Beneficiario")}
+                  {th("Beneficiario", "Beneficiarios")}
                   {th("DNI", "DNI")}
                   {th("Escribano", "Escribano Designado")}
                   {th("Estado", "Estado")}
