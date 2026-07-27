@@ -1,28 +1,58 @@
 import gspread
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
+import threading
 
-def calcular_diferencia_dias_vectorizado(df, fecha1, fecha2):
-    """
-    Calcula la diferencia en días entre dos columnas de fechas en un DataFrame.
-    Maneja fechas inválidas.
-    """
-    fecha_inicio = pd.to_datetime(df[fecha1], format="%d/%m/%Y", errors="coerce")
-    fecha_fin = pd.to_datetime(df[fecha2], format="%d/%m/%Y", errors="coerce")
-    return (fecha_fin - fecha_inicio).dt.days.fillna(0).astype(int)
+# ─── Caché en memoria con TTL ─────────────────────────────────────────────────
+_cache = {}
+_cache_lock = threading.Lock()
+CACHE_TTL = timedelta(minutes=5)  # Ajustable: 5 minutos entre refrescos
 
-def cargar_datos(sheet_url, creds_json):
+def _get_cached(key, fetch_fn):
     """
-    Carga datos desde Google Sheets y aplica la lógica de semaforización.
+    Cache decorator-like: si hay dato en caché y no expiró, lo devuelve.
+    Si expiró o no existe, llama a fetch_fn(), guarda y devuelve.
+    Thread-safe para producción con múltiples workers.
     """
-    # Autenticación con Google Sheets
+    now = datetime.now()
+    with _cache_lock:
+        entry = _cache.get(key)
+        if entry and entry["expires_at"] > now:
+            print(f"[CACHE] HIT — sirviendo desde caché (expira {entry['expires_at'].strftime('%H:%M:%S')})")
+            return entry["data"]
+
+    # Cache miss — obtener datos
+    print(f"[CACHE] MISS — consultando Google Sheets...")
+    data = fetch_fn()
+
+    with _cache_lock:
+        _cache[key] = {"data": data, "expires_at": now + CACHE_TTL}
+
+    print(f"[CACHE] Almacenado hasta { (now + CACHE_TTL).strftime('%H:%M:%S') }")
+    return data
+
+
+def _fetch_from_google(sheet_url, creds_json):
+    """Función interna que realmente llama a Google Sheets."""
     gc = gspread.service_account_from_dict(creds_json)
     sh = gc.open_by_url(sheet_url)
     worksheet = sh.get_worksheet(0)
     data = worksheet.get_all_records()
     df = pd.DataFrame(data)
+    return _procesar_dataframe(df)
 
+
+def cargar_datos(sheet_url, creds_json):
+    """
+    Carga datos desde Google Sheets con caché en memoria.
+    La primera llamada va a Google Sheets; las siguientes dentro del TTL (5 min)
+    sirven desde caché.
+    """
+    return _get_cached(sheet_url, lambda: _fetch_from_google(sheet_url, creds_json))
+
+def _procesar_dataframe(df):
+    """Procesa el DataFrame: convierte fechas, calcula diferencias."""
     # Validar y convertir las fechas al formato ISO
     columnas_fecha = [
         "Fecha Ingreso Colegio de Escribanos",
