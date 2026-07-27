@@ -1,19 +1,43 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import API_CONFIG from "../config-api";
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
 
-export default function useDataLoader(resource = "escrituracion", tryLimit = 10000) {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+function formatError(err) {
+  if (!err) return null;
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  // Sin conexión
+  if (err.code === "ERR_NETWORK") {
+    return "No se puede conectar con el servidor. Verificá que el backend esté corriendo.";
+  }
+
+  // Timeout
+  if (err.code === "ECONNABORTED") {
+    return "El servidor no respondió a tiempo. Probá de nuevo más tarde.";
+  }
+
+  // HTTP error con mensaje del backend
+  const serverMsg = err.response?.data?.detail;
+  if (serverMsg) {
+    // Limpiar mensajes técnicos de FastAPI
+    if (serverMsg.includes("GOOGLE_CLOUD_SERVICE_ACCOUNT")) {
+      return "Error de configuración: la cuenta de servicio de Google no está configurada.";
+    }
+    if (serverMsg.includes("gspread") || serverMsg.includes("Google Sheets")) {
+      return "Error al leer la planilla de Google Sheets. Revisá que tenga acceso la cuenta de servicio.";
+    }
+    return serverMsg;
+  }
+
+  return err.message || "Error desconocido al cargar los datos.";
+}
+
+export default function useDataLoader(resource = "escrituracion", tryLimit = 10000) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [resource],
+    queryFn: async () => {
       const first = await axios.get(`${API_URL}/${resource}?limit=${tryLimit}`);
-      const total = (first.data && first.data.total) ?? null;
+      const total = first.data?.total ?? null;
       let all = Array.isArray(first.data?.data) ? first.data.data : Array.isArray(first.data) ? first.data : [];
 
       if (total && all.length < total) {
@@ -25,18 +49,17 @@ export default function useDataLoader(resource = "escrituracion", tryLimit = 100
           all = all.concat(chunk);
         }
       }
+      return all;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+    refetchOnWindowFocus: false,
+  });
 
-      setData(all);
-    } catch (err) {
-      setError(err?.message || "Error al cargar datos");
-    } finally {
-      setLoading(false);
-    }
-  }, [resource, tryLimit]);
-
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
-  return { data, setData, loading, error, reload: fetchAll };
+  return {
+    data: data ?? [],
+    loading: isLoading,
+    error: formatError(error),
+    reload: refetch,
+  };
 }

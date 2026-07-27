@@ -1,0 +1,329 @@
+/* SlidePanel animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.slide-panel {
+  animation: slideInRight 0.3s ease-in-out;
+}
+
+.slide-panel:not(.open) {
+  animation: slideOutRight 0.3s ease-in-out;
+}
+
+/* TimelineBar styles */
+.tl-segment {
+  height: 0.75rem;
+  flex: 1;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s ease;
+}
+
+/* KPI cards styles */
+.kpi-card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-5;
+}
+
+.kpi-card .label {
+  @apply text-sm font-medium text-gray-500 uppercase tracking-wider;
+}
+
+.kpi-card .value {
+  @apply text-2xl font-bold text-gray-900;
+}
+
+.kpi-card .meta {
+  @apply text-xs text-gray-500 mt-1;
+}
+
+.kpi-card.accent-total { border-left: 4px solid #3b82f6; }
+.kpi-card.accent-proceso { border-left: 4px solid #f59e0b; }
+.kpi-card.accent-finalizadas { border-left: 4px solid #10b981; }
+.kpi-card.accent-proximas { border-left: 4px solid #8b5cf6; }
+
+/* Chart container styles */
+.chart-container {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-5;
+}
+
+.chart-container .chart-title {
+  @apply text-lg font-semibold text-gray-800 mb-4;
+}
+
+/* Estados */
+.status-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.status-badge-success {
+  @apply bg-green-100 text-green-800;
+}
+
+.status-badge-warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.status-badge-error {
+  @apply bg-red-100 text-red-800;
+}
+
+.status-badge-default {
+  @apply bg-gray-100 text-gray-800;
+}
+
+/* Tarjetas de estado */
+.status-cards {
+  @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8;
+}
+
+.status-card {
+  @apply bg-white p-5 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-gray-100 flex flex-col gap-1 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer;
+}
+
+.status-card.selected {
+  @apply ring-2 ring-blue-500 border-transparent shadow-blue-100/50 bg-blue-50/30;
+}
+
+.status-card .label {
+  @apply text-[11px] font-bold text-gray-400 uppercase truncate tracking-wider;
+}
+
+.status-card .value {
+  @apply text-3xl font-black text-gray-800 tracking-tight;
+}
+
+.status-card .meta {
+  @apply text-[10px] text-gray-400 font-semibold bg-gray-50 px-2 py-0.5 rounded-full w-fit mt-1;
+}
+
+.status-card:hover .value {
+  @apply text-blue-600;
+}
+
+/* Semaforización de Filas */
+.data-table tbody tr.green { @apply bg-green-50/70 hover:bg-green-100/90; }
+.data-table tbody tr.yellow { @apply bg-yellow-50/70 hover:bg-yellow-100/90; }
+.data-table tbody tr.red { @apply bg-red-50/70 hover:bg-red-100/90; }
+.data-table tbody tr.gray { @apply bg-gray-50/70 hover:bg-gray-100/90; }
+
+.semaforo-badge {
+  @apply inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold min-w-[3rem] shadow-sm;
+}
+
+.semaforo-badge.green { @apply bg-green-200 text-green-800 border border-green-300; }
+.semaforo-badge.yellow { @apply bg-yellow-200 text-yellow-800 border border-yellow-300; }
+.semaforo-badge.red { @apply bg-red-200 text-red-800 border border-red-300; }
+.semaforo-badge.gray { @apply bg-gray-200 text-gray-800 border border-gray-300; }
+
+.semaforo-legend {
+  @apply flex gap-4 p-3 bg-white border border-gray-200 rounded-lg mb-4 text-xs font-medium text-gray-600;
+}
+
+.legend-item {
+  @apply flex items-center gap-2;
+}
+
+.legend-color {
+  @apply w-3 h-3 rounded-full;
+}
+
+/* Botones */
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium transition-all;
+}
+
+.btn-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 text-gray-800 hover:bg-gray-300 active:bg-gray-400;
+}
+
+.btn-small {
+  @apply px-3 py-1 text-sm;
+}
+
+/* Alertas */
+.alert {
+  @apply px-4 py-3 rounded-md;
+}
+
+.alert-error {
+  @apply bg-red-50 text-red-800 border border-red-200;
+}
+
+.alert-success {
+  @apply bg-green-50 text-green-800 border border-green-200;
+}
+
+.alert-warning {
+  @apply bg-yellow-50 text-yellow-800 border border-yellow-200;
+}
+
+/* Loading */
+.spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600;
+}
+
+.skeleton {
+  @apply bg-gray-200 rounded-md animate-pulse;
+}
+
+/* RefreshBar */
+.refresh-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-btn.refreshing {
+  color: #3b82f6;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.refresh-icon.spin {
+  animation: refreshSpin 0.8s linear infinite;
+}
+
+@keyframes refreshSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.refresh-timestamp {
+  font-size: 0.6875rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* ErrorBoundary */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 2rem;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #fecaca;
+  border-radius: 1rem;
+  margin: 2rem 0;
+}
+
+.error-boundary-icon {
+  font-size: 2rem;
+}
+
+.error-boundary h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #991b1b;
+  margin: 0;
+}
+
+.error-boundary p {
+  font-size: 0.875rem;
+  color: #b91c1c;
+  margin: 0;
+  max-width: 400px;
+}
+
+.error-boundary-btn {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #fff;
+  background: #3b82f6;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.error-boundary-btn:hover {
+  background: #2563eb;
+}
+
+/* Paginación */
+.pagination {
+  @apply flex justify-center items-center gap-1.5 mt-6 mb-4;
+}
+
+.pagination button {
+  @apply min-w-[32px] h-8 flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.pagination button.active {
+  @apply bg-blue-600 text-white border-blue-600 shadow-sm;
+}
+
+.pagination .ellipsis {
+  @apply px-2 text-gray-400 font-medium;
+}
+
+/* Transiciones */
+.transition-smooth {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Status pills */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.pill-green { @apply bg-emerald-100 text-emerald-700; }
+.pill-blue { @apply bg-blue-100 text-blue-700; }
+.pill-red { @apply bg-red-100 text-red-700; }
+.pill-gray { @apply bg-gray-200 text-gray-600; }
+.pill-default { @apply bg-slate-100 text-slate-600; }

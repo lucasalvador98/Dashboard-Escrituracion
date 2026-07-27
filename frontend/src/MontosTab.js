@@ -7,7 +7,23 @@ function parseMonto(m) {
   if (m == null) return 0;
   if (typeof m === "number") return m;
   let s = String(m).trim();
-  s = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+  // Sacar todo lo que no sea dígito, coma, punto o signo menos
+  s = s.replace(/[^\d,.-]/g, "");
+
+  // Detectar formato: si hay coma como decimal (ej: "1.500,50" o "1500,50")
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+  if (lastComma > lastDot) {
+    // Formato argentino/europeo: coma decimal, punto miles
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (lastDot > lastComma) {
+    // Formato US: punto decimal, coma (o nada) como miles
+    s = s.replace(/,/g, "");
+  } else {
+    // Sin separador decimal claro — sacar ambos
+    s = s.replace(/[,.]/g, "");
+  }
+
   const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }

@@ -4,3 +4,5 @@ gspread
 pandas
 python-dotenv
 openpyxl
+pytest
+httpx

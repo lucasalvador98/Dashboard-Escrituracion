@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from utils.google_sheets import cargar_datos
+from utils.google_sheets import cargar_datos, limpiar_cache
 from utils.stock_data import generar_excel
 from utils.firma_data import generar_firma_excel
 import json
@@ -41,6 +41,16 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "Bienvenido a la API de Escrituración"}
+
+@app.post("/refresh")
+def refrescar_cache():
+    """Limpia la caché del backend para forzar recarga desde Google Sheets."""
+    try:
+        limpiar_cache()
+        return {"status": "ok", "message": "Caché limpiada. El próximo GET /escrituracion recargará datos frescos."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al limpiar caché: {str(e)}")
+
 
 @app.get("/escrituracion")
 def obtener_datos(skip: int = 0, limit: int = 50, filtro_estado: str = None):

@@ -51,6 +51,13 @@ def cargar_datos(sheet_url, creds_json):
     """
     return _get_cached(sheet_url, lambda: _fetch_from_google(sheet_url, creds_json))
 
+
+def limpiar_cache():
+    """Limpia toda la caché en memoria. Útil para refresh forzado."""
+    with _cache_lock:
+        _cache.clear()
+    print("[CACHE] Limpiada completamente por solicitud del usuario")
+
 def _procesar_dataframe(df):
     """Procesa el DataFrame: convierte fechas, calcula diferencias."""
     # Validar y convertir las fechas al formato ISO
