@@ -127,12 +127,6 @@ export default function Escrituracion() {
     }));
   }, [visibleCols]);
 
-  const { exportCSV } = useExportCSV({
-    data: sortedData,
-    filename: `Escrituracion_${new Date().toISOString().slice(0, 10)}`,
-    columns: exportColumns,
-  });
-
   // Click en celda → filtra por ese valor
   const filterByField = useCallback((field, value) => {
     if (!value || value === "N/A") return;
@@ -221,6 +215,12 @@ export default function Escrituracion() {
     });
     return arr;
   }, [estadoFiltered, sortCol, sortOrder]);
+
+  const { exportCSV } = useExportCSV({
+    data: sortedData,
+    filename: `Escrituracion_${new Date().toISOString().slice(0, 10)}`,
+    columns: exportColumns,
+  });
 
   // === Paginación ===
   const totalPages = Math.max(1, Math.ceil(sortedData.length / itemsPerPage));
