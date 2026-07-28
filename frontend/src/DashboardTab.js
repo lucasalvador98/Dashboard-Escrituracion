@@ -110,19 +110,8 @@ export default function DashboardTab() {
 
   if (!kpis) return null;
 
-  const now = new Date();
-  const greeting = now.getHours() < 12 ? "Buenos días" : now.getHours() < 19 ? "Buenas tardes" : "Buenas noches";
-  const fechaStr = now.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-
   return (
     <div className="space-y-6">
-      {/* ── Header ── */}
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">{greeting}</h1>
-          <p className="text-sm text-slate-500 mt-0.5 capitalize">{fechaStr}</p>
-        </div>
-      </div>
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

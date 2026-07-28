@@ -187,3 +187,67 @@
 .data-table td.text-right {
   text-align: right;
 }
+
+/* ============================================================
+   Sticky columns — columnas fijas al hacer scroll horizontal
+   ============================================================ */
+.matrix-table th,
+.matrix-table td {
+  position: sticky;
+  z-index: 1;
+}
+
+/* N° column — always leftmost */
+.matrix-table th:nth-child(1),
+.matrix-table td:nth-child(1) {
+  left: 0;
+  z-index: 3;
+  background: inherit;
+}
+
+/* Departamento — 2nd column */
+.matrix-table th:nth-child(2),
+.matrix-table td:nth-child(2) {
+  left: 40px;
+  z-index: 3;
+  background: inherit;
+}
+
+/* Localidad — 3rd column */
+.matrix-table th:nth-child(3),
+.matrix-table td:nth-child(3) {
+  left: 152px;
+  z-index: 3;
+  background: inherit;
+}
+
+/* Barrio — 4th column */
+.matrix-table th:nth-child(4),
+.matrix-table td:nth-child(4) {
+  left: 262px;
+  z-index: 3;
+  background: inherit;
+}
+
+/* Ensure sticky cells have solid background */
+.matrix-table thead th:nth-child(1),
+.matrix-table thead th:nth-child(2),
+.matrix-table thead th:nth-child(3),
+.matrix-table thead th:nth-child(4) {
+  background: #f8fafc !important;
+  z-index: 4;
+}
+
+.matrix-table tbody td:nth-child(1),
+.matrix-table tbody td:nth-child(2),
+.matrix-table tbody td:nth-child(3),
+.matrix-table tbody td:nth-child(4) {
+  background: #fff !important;
+}
+
+.matrix-table tbody tr:hover td:nth-child(1),
+.matrix-table tbody tr:hover td:nth-child(2),
+.matrix-table tbody tr:hover td:nth-child(3),
+.matrix-table tbody tr:hover td:nth-child(4) {
+  background: rgba(59, 130, 246, 0.04) !important;
+}

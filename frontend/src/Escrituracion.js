@@ -7,7 +7,6 @@ import SlidePanel from "./components/SlidePanel";
 import TimelineBar from "./components/TimelineBar";
 import ColumnToggle from "./components/ColumnToggle";
 import LocationOn from '@mui/icons-material/LocationOn';
-import CalendarToday from '@mui/icons-material/CalendarToday';
 import ArrowForward from '@mui/icons-material/ArrowForward';
 import FileDownload from '@mui/icons-material/FileDownload';
 import ViewColumn from '@mui/icons-material/ViewColumn';
@@ -584,15 +583,19 @@ export default function Escrituracion() {
 
               {/* Fechas lado a lado */}
               <div className="detail-dates-row">
-                <div className="date-card">
-                  <div className="date-label"><CalendarToday sx={{ fontSize: 12, marginRight: 0.5 }} />{iv.fecha1}</div>
+                <div className="date-card date-card--from">
+                  <div className="date-label">Desde</div>
+                  <div className="date-field-name">{iv.fecha1}</div>
                   <div className="date-value">{fecha1Val}</div>
                 </div>
                 <div className="date-arrow">
-                  <ArrowForward />
+                  <div className="arrow-line"></div>
+                  <ArrowForward sx={{ fontSize: 20, color: '#6366f1' }} />
+                  <div className="arrow-line"></div>
                 </div>
-                <div className="date-card">
-                  <div className="date-label"><CalendarToday sx={{ fontSize: 12, marginRight: 0.5 }} />{iv.fecha2}</div>
+                <div className="date-card date-card--to">
+                  <div className="date-label">Hasta</div>
+                  <div className="date-field-name">{iv.fecha2}</div>
                   <div className="date-value">{fecha2Val}</div>
                 </div>
               </div>
@@ -601,7 +604,7 @@ export default function Escrituracion() {
               <div className="detail-result">
                 <div className="result-label">Diferencia</div>
                 <div className="result-value-row">
-                  <span className={`diff-badge ${cls} text-base px-4 py-2`}>
+                  <span className={`diff-badge ${cls} text-lg px-5 py-2`}>
                     {val !== "N/A" && val !== "" && val != null ? `${val} días hábiles` : "Sin datos"}
                   </span>
                   <span className="result-threshold">
@@ -612,10 +615,10 @@ export default function Escrituracion() {
 
               {/* Meta info */}
               <div className="detail-meta">
-                <div><LocationOn sx={{ fontSize: 14, verticalAlign: 'middle', marginRight: 0.5 }} /> Departamento: {item.Departamento || "—"}</div>
-                <div>Localidad: {item.Localidad || "—"}</div>
-                <div>Barrio: {item.Barrio || "—"}</div>
-                <div>Estado: {item.Estado || "—"}</div>
+                <div><LocationOn sx={{ fontSize: 14, verticalAlign: 'middle', marginRight: 0.5 }} /> {item.Departamento || "—"}</div>
+                <div>{item.Localidad || "—"}</div>
+                <div>{item.Barrio || "—"}</div>
+                <div>Estado: <strong>{item.Estado || "—"}</strong></div>
               </div>
             </div>
           );
