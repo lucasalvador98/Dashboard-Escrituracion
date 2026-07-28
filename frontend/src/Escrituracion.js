@@ -36,6 +36,31 @@ const TABLE_COLUMNS = [
   ...INTERVALS.map(iv => ({ key: iv.key, label: iv.label, fullLabel: iv.fullLabel, alwaysOn: false })),
 ];
 
+// Keys que se activan por defecto (columnas core + fechas)
+const DEFAULT_ACTIVE_KEYS = new Set([
+  ...TABLE_COLUMNS.filter(c => c.alwaysOn).map(c => c.key),
+  ...DATE_COLS,
+]);
+
+// Columnas internas que no se muestran como columnas del usuario
+const INTERNAL_KEYS = new Set([
+  ...INTERVAL_KEYS,
+  "id",
+]);
+
+// Label limpio para columnas del Sheet
+function labelize(key) {
+  return key
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, c => c.toUpperCase())
+    .replace(/Dni/g, "DNI")
+    .replace(/Mza\b/g, "Mza.")
+    .replace(/Lote\b/g, "Lote")
+    .replace(/Tel\b/g, "Tel.")
+    .replace(/Cot\b/g, "Cot.")
+    .replace(/Ing d/g, "Ing D");
+}
+
 const COLUMN_GROUPS = [
   { label: "Ubicación", keys: ["Departamento", "Localidad", "Barrio"] },
   { label: "Partes", keys: ["Beneficiarios", "DNI", "Escribano Designado"] },
@@ -107,6 +132,43 @@ export default function Escrituracion() {
     estado: "Todos", escribano: "", dni: ""
   });
 
+  // === Datos procesados ===
+  const rawData = Array.isArray(data) ? data : [];
+
+  // ── Columnas dinámicas: detectar todas las keys del JSON ──
+  const allColumns = useMemo(() => {
+    if (!rawData.length) return TABLE_COLUMNS;
+
+    const dataKeys = new Set();
+    rawData.forEach(item => {
+      Object.keys(item).forEach(k => dataKeys.add(k));
+    });
+
+    const coreKeys = new Set(TABLE_COLUMNS.map(c => c.key));
+    const coreCols = TABLE_COLUMNS.map(c => c.key);
+
+    // Extra columns: in data but not core and not internal
+    const extraCols = [...dataKeys]
+      .filter(k => !coreKeys.has(k) && !INTERNAL_KEYS.has(k))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    const allKeys = [...coreCols, ...extraCols];
+    return allKeys.map(key => {
+      const existing = TABLE_COLUMNS.find(c => c.key === key);
+      return existing || { key, label: labelize(key), alwaysOn: false };
+    });
+  }, [rawData]);
+
+  // Grupos dinámicos: core groups + "Otras" para las que no están en ningún grupo
+  const allGroups = useMemo(() => {
+    const groupedKeys = new Set(COLUMN_GROUPS.flatMap(g => g.keys));
+    const ungrouped = allColumns
+      .filter(c => !groupedKeys.has(c.key) && !INTERNAL_KEYS.has(c.key))
+      .map(c => c.key);
+    if (ungrouped.length === 0) return COLUMN_GROUPS;
+    return [...COLUMN_GROUPS, { label: "Otras", keys: ungrouped }];
+  }, [allColumns]);
+
   const [sortCol, setSortCol] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [page, setPage] = useState(1);
@@ -115,16 +177,33 @@ export default function Escrituracion() {
   const [showColToggle, setShowColToggle] = useState(false);
   const [visibleCols, setVisibleCols] = useState(() => {
     const saved = localStorage.getItem("escrituracion_visibleCols");
-    return saved ? JSON.parse(saved) : TABLE_COLUMNS.filter(c => c.alwaysOn).map(c => c.key);
+    if (saved) return JSON.parse(saved);
+    // First render: allColumns may be empty, use TABLE_COLUMNS as fallback
+    return TABLE_COLUMNS.filter(c => c.alwaysOn).map(c => c.key);
   });
+
+  // Sync visibleCols when allColumns loads (first data arrival)
+  useEffect(() => {
+    const saved = localStorage.getItem("escrituracion_visibleCols");
+    if (saved) return; // User has manually configured — respect it
+    // First load with data: activate core + date columns
+    const defaults = allColumns.filter(c => DEFAULT_ACTIVE_KEYS.has(c.key)).map(c => c.key);
+    setVisibleCols(prev => {
+      // Only update if the default set changed (data just arrived)
+      if (prev.length === TABLE_COLUMNS.filter(c => c.alwaysOn).length && defaults.length !== prev.length) {
+        return defaults;
+      }
+      return prev;
+    });
+  }, [allColumns]);
 
   // Columnas de export: todas las columnas visibles
   const exportColumns = useMemo(() => {
-    return TABLE_COLUMNS.filter(c => visibleCols.includes(c.key)).map(c => ({
+    return allColumns.filter(c => visibleCols.includes(c.key)).map(c => ({
       key: c.key,
       label: c.label,
     }));
-  }, [visibleCols]);
+  }, [visibleCols, allColumns]);
 
   // Click en celda → filtra por ese valor
   const filterByField = useCallback((field, value) => {
@@ -150,8 +229,6 @@ export default function Escrituracion() {
     });
   }
 
-  // === Datos procesados ===
-  const rawData = Array.isArray(data) ? data : [];
   const processedData = useMemo(() => generarReporte(rawData), [rawData]);
   const filteredData = useMemo(() => applyFilters(processedData), [processedData, filters, applyFilters]);
 
@@ -332,8 +409,8 @@ export default function Escrituracion() {
           </button>
           {showColToggle && (
             <ColumnToggle
-              columns={TABLE_COLUMNS}
-              groups={COLUMN_GROUPS}
+              columns={allColumns}
+              groups={allGroups}
               visibleCols={visibleCols}
               onToggle={toggleColumn}
               onClose={() => setShowColToggle(false)}
@@ -416,7 +493,7 @@ export default function Escrituracion() {
               <thead>
                 <tr>
                   <th className="row-num">N°</th>
-                  {TABLE_COLUMNS.filter(c => visibleCols.includes(c.key)).map(c =>
+                  {allColumns.filter(c => visibleCols.includes(c.key)).map(c =>
                     c.key.startsWith("diferencia_")
                       ? (() => {
                           const iv = INTERVALS.find(i => i.key === c.key);
@@ -449,7 +526,7 @@ export default function Escrituracion() {
                   return (
                     <tr key={stableKey}>
                       <td className="row-num">{idx + 1 + (safePage - 1) * itemsPerPage}</td>
-                      {TABLE_COLUMNS.filter(c => visibleCols.includes(c.key)).map(c => {
+                      {allColumns.filter(c => visibleCols.includes(c.key)).map(c => {
                         if (c.key.startsWith("diferencia_")) {
                           const iv = INTERVALS.find(i => i.key === c.key);
                           if (!iv) return null;
@@ -511,7 +588,7 @@ export default function Escrituracion() {
 
                 {paginatedData.length === 0 && (
                   <tr>
-                    <td colSpan={1 + TABLE_COLUMNS.filter(c => visibleCols.includes(c.key)).length} className="text-center py-12">
+                    <td colSpan={1 + allColumns.filter(c => visibleCols.includes(c.key)).length} className="text-center py-12">
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-2xl">🔍</span>
                         <span className="text-slate-400 font-medium">No hay registros</span>
