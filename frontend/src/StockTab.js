@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
 import SelectFilters from "./components/SelectFilters";
@@ -6,17 +6,7 @@ import SlidePanel from "./components/SlidePanel";
 import API_CONFIG from "./config-api";
 
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+const DETALLE_PER_PAGE = 10;
 
 function downloadExcel(url, filename) {
   const a = document.createElement("a");
@@ -27,40 +17,165 @@ function downloadExcel(url, filename) {
   document.body.removeChild(a);
 }
 
+// ─── Tabla de detalle paginada (reutilizable) ─────────────────────────────────
+
+function DetalleTable({ items, columns, renderCell }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / DETALLE_PER_PAGE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginated = items.slice((safePage - 1) * DETALLE_PER_PAGE, safePage * DETALLE_PER_PAGE);
+
+  // Reset page when items change
+  useEffect(() => setPage(1), [items]);
+
+  return (
+    <div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
+          <thead>
+            <tr className="bg-slate-100">
+              {columns.map(col => (
+                <th key={col.key} className="px-2.5 py-2 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider border border-slate-200">
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.map((item, idx) => {
+              const globalIdx = (safePage - 1) * DETALLE_PER_PAGE + idx;
+              return (
+                <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                  {columns.map(col => (
+                    <td key={col.key} className="px-2.5 py-2 border border-slate-200 text-slate-700">
+                      {renderCell(col.key, item, globalIdx)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Paginado */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+          <span className="text-[11px] text-slate-400 font-medium">
+            {items.length} registros — Página {safePage} de {totalPages}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              className="px-2 py-1 text-xs font-medium text-slate-500 bg-slate-100 rounded hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+            >
+              ←
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (safePage <= 3) {
+                pageNum = i + 1;
+              } else if (safePage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = safePage - 2 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  className={`w-7 h-7 text-xs font-medium rounded transition-colors ${
+                    safePage === pageNum
+                      ? "bg-blue-600 text-white"
+                      : "text-slate-500 hover:bg-slate-100"
+                  }`}
+                  onClick={() => setPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            <button
+              className="px-2 py-1 text-xs font-medium text-slate-500 bg-slate-100 rounded hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+            >
+              →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Columnas de detalle compartidas ──────────────────────────────────────────
+
+const DETALLE_COLUMNS = [
+  { key: "nro", label: "N°" },
+  { key: "barrio", label: "Barrio" },
+  { key: "mza", label: "Mza" },
+  { key: "lote", label: "Lote" },
+  { key: "nombre", label: "Beneficiario" },
+  { key: "dni", label: "DNI" },
+  { key: "tel", label: "Teléfono" },
+  { key: "cotitular", label: "Cotitular" },
+  { key: "dniCot", label: "DNI Cot." },
+  { key: "telCot", label: "Tel. Cot." },
+  { key: "asistencia", label: "Asistencia" },
+];
+
+function extractDetalleFields(item) {
+  return {
+    nombre: item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre ?? "—",
+    dni: item.DNI ?? item.dni ?? item.documento ?? "—",
+    mza: item["Mza. Plano"] ?? item["Mza. Oficial"] ?? item.Mza ?? item.MZA ?? item.mza ?? "—",
+    lote: item["Lote Plano"] ?? item["Lote oficial"] ?? item["Lote Oficial"] ?? item.Lote ?? item.LOTE ?? "—",
+    cotitular: item["COTITULAR Nombre y Apellido"] ?? item["COTITULAR - Nombre y Apellido"] ?? item.Cotitular ?? "—",
+    dniCot: item["COTITULAR DNI"] ?? item["COTITULAR - DNI"] ?? item.CotitularDNI ?? "—",
+    telCot: item["COTITULAR Telefono"] ?? item["Tel. Cotitular"] ?? item.TelefonoCotitular ?? "—",
+    tel: item.Telefono ?? item.telefono ?? "—",
+    asistencia: item.Asistencia ?? item.ASISTENCIA ?? "—",
+    barrio: item.Barrio ?? "—",
+  };
+}
+
+function renderDetalleCell(key, item, idx) {
+  const f = extractDetalleFields(item);
+  if (key === "nro") return <span className="text-slate-400 font-medium">{idx + 1}</span>;
+  if (key === "nombre") return <span className="font-semibold text-slate-800">{f.nombre}</span>;
+  if (key === "dni") return <span className="font-mono text-[11px]">{f.dni}</span>;
+  return f[key] || "—";
+}
+
+
 export default function StockTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
-  const [activeSubTab, setActiveSubTab] = useState("finalizadas"); // "finalizadas" | "tramite"
+  const [activeSubTab, setActiveSubTab] = useState("finalizadas");
 
   return (
     <div className="space-y-4">
-      {/* Header + sub-tabs */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">
-          Stock
-        </h2>
-        <div className="flex items-center gap-2">
-          <div className="flex bg-slate-100 rounded-lg p-0.5">
+        <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Stock</h2>
+        <div className="flex bg-slate-100 rounded-lg p-0.5">
+          {[
+            { key: "finalizadas", label: "Finalizadas" },
+            { key: "tramite", label: "En Trámite" },
+          ].map(tab => (
             <button
+              key={tab.key}
               className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
-                activeSubTab === "finalizadas"
+                activeSubTab === tab.key
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
               }`}
-              onClick={() => setActiveSubTab("finalizadas")}
+              onClick={() => setActiveSubTab(tab.key)}
             >
-              Finalizadas
+              {tab.label}
             </button>
-            <button
-              className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
-                activeSubTab === "tramite"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-              onClick={() => setActiveSubTab("tramite")}
-            >
-              En Trámite
-            </button>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -82,10 +197,10 @@ function StockFinalizadas({ data, loading, error }) {
     estado: "Todos", escribano: "", dni: "",
   });
 
-  const ESTADOS_FINALIZADAS = ["Finalizada sin Entregar", "Entregada"];
+  const ESTADOS = ["Finalizada sin Entregar", "Entregada"];
 
   const finalizadas = useMemo(
-    () => (Array.isArray(data) ? data.filter(i => ESTADOS_FINALIZADAS.includes(i.Estado)) : []),
+    () => (Array.isArray(data) ? data.filter(i => ESTADOS.includes(i.Estado)) : []),
     [data]
   );
 
@@ -119,69 +234,77 @@ function StockFinalizadas({ data, loading, error }) {
     <>
       <SelectFilters data={finalizadas} filters={filters} setFilters={setFilters} />
 
-      <div className="table-wrap overflow-x-auto">
-        <table className="stock-table w-full">
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <table className="w-full text-sm">
           <thead>
-            <tr>
-              <th></th>
-              <th>Departamento</th>
-              <th>Localidad</th>
-              <th>Barrio</th>
-              <th>Finalizada sin Entregar</th>
-              <th>Entregada</th>
-              <th>Total</th>
+            <tr className="bg-slate-50">
+              <th className="w-8"></th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Departamento</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Localidad</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Barrio</th>
+              <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Fin. sin Entregar</th>
+              <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Entregada</th>
+              <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Total</th>
             </tr>
           </thead>
-          <tbody>
-            {Object.entries(grouped).map(([depto, locs]) => (
-              <React.Fragment key={depto}>
-                <tr className="row-depto" onClick={() => toggleDepto(depto)} style={{ cursor: "pointer" }}>
-                  <td>{expandedDeptos[depto] ? "▼" : "▶"}</td>
-                  <td colSpan={2} style={{ fontWeight: 600 }}>{depto}</td>
-                  <td></td>
-                  {(() => {
-                    const items = Object.values(locs).flatMap(b => Object.values(b).flat());
-                    const fin = items.filter(i => i.Estado === "Finalizada sin Entregar").length;
-                    const ent = items.filter(i => i.Estado === "Entregada").length;
-                    return <><td>{fin}</td><td>{ent}</td><td>{items.length}</td></>;
-                  })()}
-                </tr>
+          <tbody className="divide-y divide-slate-100">
+            {Object.entries(grouped).map(([depto, locs]) => {
+              const deptoItems = Object.values(locs).flatMap(b => Object.values(b).flat());
+              const fin = deptoItems.filter(i => i.Estado === "Finalizada sin Entregar").length;
+              const ent = deptoItems.filter(i => i.Estado === "Entregada").length;
+              return (
+                <React.Fragment key={depto}>
+                  <tr className="bg-slate-50/80 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleDepto(depto)}>
+                    <td className="px-2 py-3 text-center text-slate-400">{expandedDeptos[depto] ? "▼" : "▶"}</td>
+                    <td colSpan={3} className="px-4 py-3 font-bold text-slate-800">{depto}</td>
+                    <td className="px-4 py-3 text-center text-sm font-semibold text-slate-600">{fin}</td>
+                    <td className="px-4 py-3 text-center text-sm font-semibold text-slate-600">{ent}</td>
+                    <td className="px-4 py-3 text-center text-sm font-bold text-slate-900">{deptoItems.length}</td>
+                  </tr>
 
-                {expandedDeptos[depto] && Object.entries(locs).map(([loc, barriosObj]) => (
-                  <React.Fragment key={loc}>
-                    <tr className="row-loc" onClick={() => toggleLoc(depto, loc)} style={{ cursor: "pointer" }}>
-                      <td style={{ paddingLeft: "2em" }}>{expandedLocs[depto + "|" + loc] ? "▼" : "▶"}</td>
-                      <td></td>
-                      <td colSpan={2} style={{ fontWeight: 500 }}>{loc}</td>
-                      {(() => {
-                        const items = Object.values(barriosObj).flat();
-                        const fin = items.filter(i => i.Estado === "Finalizada sin Entregar").length;
-                        const ent = items.filter(i => i.Estado === "Entregada").length;
-                        return <><td>{fin}</td><td>{ent}</td><td>{items.length}</td></>;
-                      })()}
-                    </tr>
+                  {expandedDeptos[depto] && Object.entries(locs).map(([loc, barriosObj]) => {
+                    const locItems = Object.values(barriosObj).flat();
+                    const locFin = locItems.filter(i => i.Estado === "Finalizada sin Entregar").length;
+                    const locEnt = locItems.filter(i => i.Estado === "Entregada").length;
+                    return (
+                      <React.Fragment key={loc}>
+                        <tr className="cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => toggleLoc(depto, loc)}>
+                          <td></td>
+                          <td className="px-2 py-2.5 text-center text-slate-400 text-xs">{expandedLocs[depto + "|" + loc] ? "▼" : "▶"}</td>
+                          <td colSpan={2} className="px-4 py-2.5 font-semibold text-slate-700">{loc}</td>
+                          <td className="px-4 py-2.5 text-center text-sm text-slate-600">{locFin}</td>
+                          <td className="px-4 py-2.5 text-center text-sm text-slate-600">{locEnt}</td>
+                          <td className="px-4 py-2.5 text-center text-sm font-semibold text-slate-800">{locItems.length}</td>
+                        </tr>
 
-                    {expandedLocs[depto + "|" + loc] && Object.entries(barriosObj).map(([barrio, items], idx) => (
-                      <tr key={barrio} className={idx % 2 === 0 ? "row-even" : "row-odd"}>
-                        <td></td>
-                        <td></td>
-                        <td>{barrio}</td>
-                        <td>
-                          <button className="btn-detalle" onClick={() => setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items })}>
-                            Ver detalle
-                          </button>
-                        </td>
-                        {(() => {
-                          const fin = items.filter(i => i.Estado === "Finalizada sin Entregar").length;
-                          const ent = items.filter(i => i.Estado === "Entregada").length;
-                          return <><td>{fin}</td><td>{ent}</td><td>{items.length}</td></>;
-                        })()}
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </React.Fragment>
-            ))}
+                        {expandedLocs[depto + "|" + loc] && Object.entries(barriosObj).map(([barrio, items]) => {
+                          const barFin = items.filter(i => i.Estado === "Finalizada sin Entregar").length;
+                          const barEnt = items.filter(i => i.Estado === "Entregada").length;
+                          return (
+                            <tr key={barrio} className="hover:bg-blue-50/40 transition-colors">
+                              <td></td>
+                              <td></td>
+                              <td className="pl-8 text-sm text-slate-600">{barrio}</td>
+                              <td className="px-4 py-2.5">
+                                <button
+                                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                                  onClick={() => setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items })}
+                                >
+                                  Ver detalle
+                                </button>
+                              </td>
+                              <td className="px-4 py-2.5 text-center text-sm text-slate-600">{barFin}</td>
+                              <td className="px-4 py-2.5 text-center text-sm text-slate-600">{barEnt}</td>
+                              <td className="px-4 py-2.5 text-center text-sm font-semibold text-slate-800">{items.length}</td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -189,67 +312,28 @@ function StockFinalizadas({ data, loading, error }) {
       {/* Panel lateral de detalle */}
       <SlidePanel isOpen={!!detalle} onClose={() => setDetalle(null)} title={detalle ? detalle.titulo : ""}>
         {detalle && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-slate-500 font-medium">TU CASA TU ESCRITURA - Ley 9811</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-400 font-medium">TU CASA TU ESCRITURA — Ley 9811</p>
               <button
                 onClick={() => downloadExcel(
                   `${API_URL}/stock/exportar?departamento=${encodeURIComponent(detalle.titulo.split(" - ")[0])}&localidad=${encodeURIComponent(detalle.titulo.split(" - ")[1])}&barrio=${encodeURIComponent(detalle.titulo.split(" - ")[2])}`,
                   `Stock_${detalle.titulo.split(" - ")[2].replace(/\s+/g, "_")}.xlsx`
                 )}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-all"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
                 Descargar Excel
               </button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#d9e1f2" }}>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">N°</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">BARRIO</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">MZA</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">LOTE</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">APELLIDO Y NOMBRE</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">DNI</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">Teléfono</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">COTITULAR</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">DNI Cot.</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">Tel. Cot.</th>
-                    <th className="px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border border-slate-300 text-center">ASISTENCIA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detalle.items.map((item, idx) => {
-                    const nombre = item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre;
-                    const dni = item.DNI ?? item.dni ?? item.documento;
-                    const mza = item["Mza. Plano"] ?? item["Mza. Oficial"] ?? item.Mza ?? item.MZA ?? item.mza;
-                    const lote = item["Lote Plano"] ?? item["Lote oficial"] ?? item["Lote Oficial"] ?? item.Lote ?? item.LOTE;
-                    const cotitular = item["COTITULAR Nombre y Apellido"] ?? item["COTITULAR - Nombre y Apellido"] ?? item.Cotitular;
-                    const dniCot = item["COTITULAR DNI"] ?? item["COTITULAR - DNI"] ?? item.CotitularDNI;
-                    const telCot = item["COTITULAR Telefono"] ?? item["Tel. Cotitular"] ?? item.TelefonoCotitular;
-                    return (
-                      <tr key={idx} className="border-t border-slate-200 hover:bg-slate-50">
-                        <td className="px-3 py-2 text-center border border-slate-200">{idx + 1}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200">{item.Barrio || ""}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200">{mza || "—"}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200">{lote || "—"}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200 font-semibold text-slate-800">{nombre || "—"}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200 font-mono text-xs">{dni || "—"}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200">{item.Telefono || item.telefono || "—"}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200">{cotitular || "—"}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200">{dniCot || "—"}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200">{telCot || "—"}</td>
-                        <td className="px-3 py-2 text-center border border-slate-200">{item.Asistencia || item.ASISTENCIA || "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+
+            <DetalleTable
+              items={detalle.items}
+              columns={DETALLE_COLUMNS}
+              renderCell={renderDetalleCell}
+            />
           </div>
         )}
       </SlidePanel>
@@ -302,53 +386,61 @@ function StockTramite({ data, loading, error }) {
     <>
       <SelectFilters data={tramite} filters={filters} setFilters={setFilters} />
 
-      <div className="table-wrap overflow-x-auto">
-        <table className="stock-table w-full">
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <table className="w-full text-sm">
           <thead>
-            <tr>
-              <th></th>
-              <th>Departamento</th>
-              <th>Localidad</th>
-              <th>Barrio</th>
-              <th>En Trámite</th>
+            <tr className="bg-slate-50">
+              <th className="w-8"></th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Departamento</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Localidad</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Barrio</th>
+              <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">En Trámite</th>
             </tr>
           </thead>
-          <tbody>
-            {Object.entries(grouped).map(([depto, locs]) => (
-              <React.Fragment key={depto}>
-                <tr className="row-depto" onClick={() => toggleDepto(depto)} style={{ cursor: "pointer" }}>
-                  <td>{expandedDeptos[depto] ? "▼" : "▶"}</td>
-                  <td colSpan={2} style={{ fontWeight: 600 }}>{depto}</td>
-                  <td></td>
-                  <td>{Object.values(locs).flatMap(b => Object.values(b).flat()).length}</td>
-                </tr>
+          <tbody className="divide-y divide-slate-100">
+            {Object.entries(grouped).map(([depto, locs]) => {
+              const deptoCount = Object.values(locs).flatMap(b => Object.values(b).flat()).length;
+              return (
+                <React.Fragment key={depto}>
+                  <tr className="bg-slate-50/80 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleDepto(depto)}>
+                    <td className="px-2 py-3 text-center text-slate-400">{expandedDeptos[depto] ? "▼" : "▶"}</td>
+                    <td colSpan={3} className="px-4 py-3 font-bold text-slate-800">{depto}</td>
+                    <td className="px-4 py-3 text-center text-sm font-bold text-slate-900">{deptoCount}</td>
+                  </tr>
 
-                {expandedDeptos[depto] && Object.entries(locs).map(([loc, barriosObj]) => (
-                  <React.Fragment key={loc}>
-                    <tr className="row-loc" onClick={() => toggleLoc(depto, loc)} style={{ cursor: "pointer" }}>
-                      <td style={{ paddingLeft: "2em" }}>{expandedLocs[depto + "|" + loc] ? "▼" : "▶"}</td>
-                      <td></td>
-                      <td colSpan={2} style={{ fontWeight: 500 }}>{loc}</td>
-                      <td>{Object.values(barriosObj).flat().length}</td>
-                    </tr>
+                  {expandedDeptos[depto] && Object.entries(locs).map(([loc, barriosObj]) => {
+                    const locCount = Object.values(barriosObj).flat().length;
+                    return (
+                      <React.Fragment key={loc}>
+                        <tr className="cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => toggleLoc(depto, loc)}>
+                          <td></td>
+                          <td className="px-2 py-2.5 text-center text-slate-400 text-xs">{expandedLocs[depto + "|" + loc] ? "▼" : "▶"}</td>
+                          <td colSpan={2} className="px-4 py-2.5 font-semibold text-slate-700">{loc}</td>
+                          <td className="px-4 py-2.5 text-center text-sm font-semibold text-slate-800">{locCount}</td>
+                        </tr>
 
-                    {expandedLocs[depto + "|" + loc] && Object.entries(barriosObj).map(([barrio, items], idx) => (
-                      <tr key={barrio} className={idx % 2 === 0 ? "row-even" : "row-odd"}>
-                        <td></td>
-                        <td></td>
-                        <td>{barrio}</td>
-                        <td>
-                          <button className="btn-detalle" onClick={() => setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items, barrio, loc, depto })}>
-                            Ver detalle
-                          </button>
-                        </td>
-                        <td>{items.length}</td>
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </React.Fragment>
-            ))}
+                        {expandedLocs[depto + "|" + loc] && Object.entries(barriosObj).map(([barrio, items]) => (
+                          <tr key={barrio} className="hover:bg-blue-50/40 transition-colors">
+                            <td></td>
+                            <td></td>
+                            <td className="pl-8 text-sm text-slate-600">{barrio}</td>
+                            <td className="px-4 py-2.5">
+                              <button
+                                className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                                onClick={() => setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items, barrio, loc, depto })}
+                              >
+                                Ver detalle
+                              </button>
+                            </td>
+                            <td className="px-4 py-2.5 text-center text-sm font-semibold text-slate-800">{items.length}</td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -359,34 +451,34 @@ function StockTramite({ data, loading, error }) {
           <div className="space-y-4">
             {/* Formulario de firma */}
             <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-              <h4 className="text-sm font-bold text-slate-700 uppercase">Datos del Evento de Firma</h4>
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Datos del Evento de Firma</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-500">Fecha</label>
-                  <input type="date" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg" value={firmaForm.fecha} onChange={e => setFirmaForm(p => ({ ...p, fecha: e.target.value }))} />
+                  <label className="text-[11px] font-medium text-slate-500">Fecha</label>
+                  <input type="date" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value={firmaForm.fecha} onChange={e => setFirmaForm(p => ({ ...p, fecha: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-slate-500">Hora</label>
-                  <input type="time" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg" value={firmaForm.hora} onChange={e => setFirmaForm(p => ({ ...p, hora: e.target.value }))} />
+                  <label className="text-[11px] font-medium text-slate-500">Hora</label>
+                  <input type="time" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value={firmaForm.hora} onChange={e => setFirmaForm(p => ({ ...p, hora: e.target.value }))} />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-500">Lugar</label>
-                <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg" placeholder="Ej: SALON COOP. 22 DE MAYO" value={firmaForm.lugar} onChange={e => setFirmaForm(p => ({ ...p, lugar: e.target.value }))} />
+                <label className="text-[11px] font-medium text-slate-500">Lugar</label>
+                <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: SALON COOP. 22 DE MAYO" value={firmaForm.lugar} onChange={e => setFirmaForm(p => ({ ...p, lugar: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-500">Escribano</label>
-                  <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg" placeholder="Nombre y Apellido" value={firmaForm.nombre} onChange={e => setFirmaForm(p => ({ ...p, nombre: e.target.value }))} />
+                  <label className="text-[11px] font-medium text-slate-500">Escribano</label>
+                  <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nombre y Apellido" value={firmaForm.nombre} onChange={e => setFirmaForm(p => ({ ...p, nombre: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-slate-500">Teléfono</label>
-                  <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg" value={firmaForm.tel} onChange={e => setFirmaForm(p => ({ ...p, tel: e.target.value }))} />
+                  <label className="text-[11px] font-medium text-slate-500">Teléfono</label>
+                  <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value={firmaForm.tel} onChange={e => setFirmaForm(p => ({ ...p, tel: e.target.value }))} />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-500">Mail</label>
-                <input type="email" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg" value={firmaForm.mail} onChange={e => setFirmaForm(p => ({ ...p, mail: e.target.value }))} />
+                <label className="text-[11px] font-medium text-slate-500">Mail</label>
+                <input type="email" className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value={firmaForm.mail} onChange={e => setFirmaForm(p => ({ ...p, mail: e.target.value }))} />
               </div>
             </div>
 
@@ -397,12 +489,8 @@ function StockTramite({ data, loading, error }) {
                   departamento: detalle.depto || "",
                   localidad: detalle.loc || "",
                   barrio: detalle.barrio || "",
-                  fecha: firmaForm.fecha,
-                  hora: firmaForm.hora,
-                  lugar: firmaForm.lugar,
-                  escribano_nombre: firmaForm.nombre,
-                  escribano_tel: firmaForm.tel,
-                  escribano_mail: firmaForm.mail,
+                  fecha: firmaForm.fecha, hora: firmaForm.hora, lugar: firmaForm.lugar,
+                  escribano_nombre: firmaForm.nombre, escribano_tel: firmaForm.tel, escribano_mail: firmaForm.mail,
                 });
                 downloadExcel(`${API_URL}/stock/firma/exportar?${params}`, `Firma_${detalle.barrio.replace(/\s+/g, "_")}.xlsx`);
               }}
@@ -414,37 +502,12 @@ function StockTramite({ data, loading, error }) {
               Descargar Formato FIRMA
             </button>
 
-            {/* Preview de beneficiarios */}
-            <div className="text-xs font-medium text-slate-500">{detalle.items.length} beneficiarios en este barrio</div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">#</th>
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">Beneficiario</th>
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">DNI</th>
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">Mza</th>
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">Lote</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detalle.items.map((item, idx) => {
-                    const nombre = item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre;
-                    const mza = item["Mza. Plano"] ?? item["Mza. Oficial"] ?? item.Mza;
-                    const lote = item["Lote Plano"] ?? item["Lote oficial"] ?? item.Lote;
-                    return (
-                      <tr key={idx} className="border-b border-slate-100">
-                        <td className="px-2 py-1">{idx + 1}</td>
-                        <td className="px-2 py-1 font-medium">{nombre || "—"}</td>
-                        <td className="px-2 py-1 font-mono">{item.DNI || "—"}</td>
-                        <td className="px-2 py-1">{mza || "—"}</td>
-                        <td className="px-2 py-1">{lote || "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            {/* Tabla paginada */}
+            <DetalleTable
+              items={detalle.items}
+              columns={DETALLE_COLUMNS.slice(0, 5)}
+              renderCell={renderDetalleCell}
+            />
           </div>
         )}
       </SlidePanel>

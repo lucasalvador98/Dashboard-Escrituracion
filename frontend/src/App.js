@@ -19,12 +19,11 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState(0); // 0: Dashboard, 1: Escrituracion, 2: Stock, 3: Montos, 4: Escribanos
+  const [activeTab, setActiveTab] = useState(0); // 0: Dashboard, 1: Escrituracion, 2: Stock, 3: Escribanos
   const tabs = [
     <ErrorBoundary key="dashboard" name="Dashboard"><DashboardTab /></ErrorBoundary>,
     <ErrorBoundary key="escrituracion" name="Escrituración"><Escrituracion /></ErrorBoundary>,
     <ErrorBoundary key="stock" name="Stock"><StockTab /></ErrorBoundary>,
-    <ErrorBoundary key="montos" name="Montos"><MontosTab /></ErrorBoundary>,
     <ErrorBoundary key="escribanos" name="Escribanos"><EscribanosTab /></ErrorBoundary>,
   ];
 
@@ -33,7 +32,7 @@ function AppContent() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        itemsCount={5}
+        itemsCount={4}
       />
 
       <div className="app-content">

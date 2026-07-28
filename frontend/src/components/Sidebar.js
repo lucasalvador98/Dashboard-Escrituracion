@@ -5,8 +5,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     { idx: 0, label: "Dashboard", icon: "dashboard" },
     { idx: 1, label: "Escrituración", icon: "home" },
     { idx: 2, label: "Stock", icon: "table" },
-    { idx: 3, label: "Montos", icon: "money" },
-    { idx: 4, label: "Escribanos", icon: "escribano" }
+    { idx: 3, label: "Escribanos", icon: "escribano" }
   ];
 
   const Icon = ({ name }) => {

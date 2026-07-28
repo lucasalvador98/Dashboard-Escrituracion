@@ -1,12 +1,6 @@
 import React, { useMemo } from "react";
 import useDataLoader from "./hooks/useDataLoader";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-
-const MONTH_COLORS = [
-  "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#d946ef",
-  "#ec4899", "#f43f5e", "#f97316", "#eab308", "#22c55e",
-  "#14b8a6", "#06b6d4"
-];
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 function StatusDot({ color }) {
   return (
@@ -194,11 +188,7 @@ export default function DashboardTab() {
                   formatter={(value) => [`${value} escrituraciones`, "Cantidad"]}
                   cursor={{ fill: "rgba(59,130,246,0.06)" }}
                 />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={40}>
-                  {kpis.chartData.map((_, i) => (
-                    <Cell key={i} fill={MONTH_COLORS[i % MONTH_COLORS.length]} />
-                  ))}
-                </Bar>
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={36} fill="#6366f1" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
