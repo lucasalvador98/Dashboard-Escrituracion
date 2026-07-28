@@ -1,10 +1,8 @@
 import React, { useState, useMemo } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
-import useExportCSV from "./hooks/useExportCSV";
 import SelectFilters from "./components/SelectFilters";
 import SlidePanel from "./components/SlidePanel";
-import FileDownload from '@mui/icons-material/FileDownload';
 import API_CONFIG from "./config-api";
 
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
@@ -93,20 +91,6 @@ function StockFinalizadas({ data, loading, error }) {
 
   const filtered = useMemo(() => applyFilters(finalizadas), [finalizadas, filters, applyFilters]);
 
-  const { exportCSV } = useExportCSV({
-    data: filtered,
-    filename: `Stock_Finalizadas_${new Date().toISOString().slice(0, 10)}`,
-    columns: [
-      { key: "Departamento", label: "Departamento" },
-      { key: "Localidad", label: "Localidad" },
-      { key: "Barrio", label: "Barrio" },
-      { key: "Beneficiarios", label: "Beneficiario" },
-      { key: "DNI", label: "DNI" },
-      { key: "Escribano Designado", label: "Escribano" },
-      { key: "Estado", label: "Estado" },
-    ],
-  });
-
   const grouped = useMemo(() => {
     const g = {};
     filtered.forEach(item => {
@@ -133,13 +117,7 @@ function StockFinalizadas({ data, loading, error }) {
 
   return (
     <>
-      <div className="flex items-start justify-between gap-2">
-        <SelectFilters data={finalizadas} filters={filters} setFilters={setFilters} />
-        <button className="toolbar-btn shrink-0 mt-1" onClick={exportCSV}>
-          <FileDownload sx={{ fontSize: 16 }} />
-          Exportar
-        </button>
-      </div>
+      <SelectFilters data={finalizadas} filters={filters} setFilters={setFilters} />
 
       <div className="table-wrap overflow-x-auto">
         <table className="stock-table w-full">
