@@ -36,12 +36,6 @@ const TABLE_COLUMNS = [
   ...INTERVALS.map(iv => ({ key: iv.key, label: iv.label, fullLabel: iv.fullLabel, alwaysOn: false })),
 ];
 
-// Keys que se activan por defecto (columnas core + fechas)
-const DEFAULT_ACTIVE_KEYS = new Set([
-  ...TABLE_COLUMNS.filter(c => c.alwaysOn).map(c => c.key),
-  ...DATE_COLS,
-]);
-
 // Columnas internas que no se muestran como columnas del usuario
 const INTERNAL_KEYS = new Set([
   ...INTERVAL_KEYS,
@@ -76,6 +70,12 @@ const DATE_COLS = new Set([
   "Fecha de Firma",
   "Fecha de Ingreso al Registro",
   "Fecha de envío PT digital",
+]);
+
+// Keys que se activan por defecto (columnas core + fechas)
+const DEFAULT_ACTIVE_KEYS = new Set([
+  ...TABLE_COLUMNS.filter(c => c.alwaysOn).map(c => c.key),
+  ...DATE_COLS,
 ]);
 
 function contarDiasHabiles(inicio, fin) {
