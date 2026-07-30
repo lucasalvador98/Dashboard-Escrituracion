@@ -131,10 +131,6 @@ def _fetch_from_google(sheet_url, creds_json):
     return _procesar_dataframe(df)
 
 
-# Conservar _fetch_from_google para backward compatibility - wrapped con reintentos
-_fetch_from_google = _fetch_with_retry
-
-
 def cargar_datos(sheet_url, creds_json):
     """
     Carga datos desde Google Sheets con caché en memoria.
