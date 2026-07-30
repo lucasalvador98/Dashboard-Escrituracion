@@ -2,14 +2,6 @@ import React, { useMemo, useState, useCallback } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-const INTERVALS = [
-  { key: "diferencia_ingreso_sorteo", label: "Ing→Sort", fullLabel: "Ingreso Colegio → Sorteo", fecha1: "Fecha Ingreso Colegio de Escribanos", fecha2: "Fecha de Sorteo", esperado: 10 },
-  { key: "diferencia_sorteo_aceptacion", label: "Sort→Acep", fullLabel: "Sorteo → Aceptación", fecha1: "Fecha de Sorteo", fecha2: "Fecha de Aceptacion", esperado: 5 },
-  { key: "diferencia_aceptacion_firma", label: "Acep→Firma", fullLabel: "Aceptación → Firma", fecha1: "Fecha de Aceptacion", fecha2: "Fecha de Firma", esperado: 20 },
-  { key: "diferencia_firma_ingreso", label: "Firma→IngD", fullLabel: "Firma → Ingreso Diario", fecha1: "Fecha de Firma", fecha2: "Fecha de Ingreso al Registro", esperado: 5 },
-  { key: "diferencia_ingreso_testimonio", label: "IngD→Test", fullLabel: "Ingreso Diario → Testimonio", fecha1: "Fecha de Ingreso al Registro", fecha2: "Fecha de envío PT digital", esperado: 15 },
-];
-
 function StatusDot({ color }) {
   return (
     <span
@@ -41,52 +33,6 @@ function parseDate(f) {
 
 // ─── Alerts computation ───────────────────────────────────────────────────────
 
-const STAGE_ORDER = ["Ing→Sort", "Sort→Acep", "Acep→Firma", "Firma→IngD", "IngD→Test"];
-
-function computeAlerts(data) {
-  if (!Array.isArray(data) || !data.length) return { totalOverdue: 0, byStage: {}, topOverdue: [], redCount: 0, yellowCount: 0, byStageGrouped: {} };
-
-  const overdue = [];
-  data.forEach(item => {
-    INTERVALS.forEach(iv => {
-      const val = item[iv.key];
-      if (val === "N/A" || val == null) return;
-      const n = Number(val);
-      if (isNaN(n) || n <= iv.esperado) return;
-      const urgency = n <= Math.ceil(iv.esperado * 1.3) ? "yellow" : "red";
-      overdue.push({
-        item,
-        interval: iv,
-        daysOverdue: n - iv.esperado,
-        urgency,
-        stageLabel: iv.label,
-        stageFullLabel: iv.fullLabel,
-        beneficiario: item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? "—",
-        dni: item.DNI || "—",
-        depto: item.Departamento || "—",
-      });
-    });
-  });
-
-  overdue.sort((a, b) => b.daysOverdue - a.daysOverdue);
-
-  const byStage = {};
-  const byStageGrouped = {};
-  let redCount = 0;
-  let yellowCount = 0;
-
-  overdue.forEach(a => {
-    byStage[a.stageLabel] = (byStage[a.stageLabel] || 0) + 1;
-    if (!byStageGrouped[a.stageLabel]) byStageGrouped[a.stageLabel] = [];
-    byStageGrouped[a.stageLabel].push(a);
-    if (a.urgency === "red") redCount++;
-    else yellowCount++;
-  });
-
-  return { totalOverdue: overdue.length, byStage, topOverdue: overdue, redCount, yellowCount, byStageGrouped };
-}
-
-
 export default function DashboardTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
 
@@ -107,12 +53,6 @@ export default function DashboardTab() {
   }, []);
 
   const hasActiveFilters = filters.department !== "Todos" || filters.escribano !== "Todos" || filters.dateFrom || filters.dateTo;
-
-  // ── Alerts expanded stages ──
-  const [expandedStages, setExpandedStages] = useState({});
-  const toggleStage = useCallback((stage) => {
-    setExpandedStages(prev => ({ ...prev, [stage]: !prev[stage] }));
-  }, []);
 
   // ── Apply filters ──
   const filteredData = useMemo(() => {
@@ -137,9 +77,6 @@ export default function DashboardTab() {
     const escs = [...new Set(data.map(getEscribano).filter(Boolean))].sort();
     return { departments: depts, escribanos: escs };
   }, [data]);
-
-  // ── Alerts (from filtered data) ──
-  const alerts = useMemo(() => computeAlerts(filteredData), [filteredData]);
 
   // ── KPIs (from filtered data) ──
   const kpis = useMemo(() => {
@@ -461,147 +398,6 @@ export default function DashboardTab() {
         </div>
       )}
 
-      {/* ── Alerts Panel (al final) ── */}
-      {alerts.totalOverdue > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
-          {/* Header + severity bar */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Alertas</h3>
-              <span className="text-[11px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">
-                {alerts.totalOverdue}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-[11px]">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                <span className="font-semibold text-slate-500">{alerts.redCount} demora</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                <span className="font-semibold text-slate-500">{alerts.yellowCount} alerta</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Severity stacked bar */}
-          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex mb-5">
-            {alerts.redCount > 0 && (
-              <div
-                className="h-full bg-red-500 transition-all duration-500"
-                style={{ width: `${(alerts.redCount / alerts.totalOverdue) * 100}%` }}
-              />
-            )}
-            {alerts.yellowCount > 0 && (
-              <div
-                className="h-full bg-amber-400 transition-all duration-500"
-                style={{ width: `${(alerts.yellowCount / alerts.totalOverdue) * 100}%` }}
-              />
-            )}
-          </div>
-
-          {/* Grouped by stage */}
-          <div className="space-y-3">
-            {STAGE_ORDER.filter(stage => alerts.byStageGrouped[stage]).map(stage => {
-              const allItems = alerts.byStageGrouped[stage];
-              const isExpanded = expandedStages[stage];
-              const visibleItems = isExpanded ? allItems : allItems.slice(0, 5);
-              const hiddenCount = allItems.length - 5;
-              const redInStage = allItems.filter(i => i.urgency === "red").length;
-              const yellowInStage = allItems.filter(i => i.urgency === "yellow").length;
-              const worstDays = allItems[0]?.daysOverdue || 0;
-
-              return (
-                <div key={stage} className="border border-slate-100 rounded-xl overflow-hidden">
-                  <button
-                    onClick={() => toggleStage(stage)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
-                  >
-                    <svg
-                      className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                    <span className="text-sm font-bold text-slate-700 flex-1">{stage}</span>
-                    <span className="text-[11px] font-semibold text-slate-400">
-                      {allItems.length} {allItems.length === 1 ? "caso" : "casos"}
-                    </span>
-                    <div className="flex gap-1.5">
-                      {redInStage > 0 && (
-                        <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
-                          {redInStage} 🔴
-                        </span>
-                      )}
-                      {yellowInStage > 0 && (
-                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
-                          {yellowInStage} ⚠️
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs font-bold text-slate-600 ml-2">
-                      +{worstDays}d peor
-                    </span>
-                  </button>
-
-                  <div className="border-t border-slate-100 bg-slate-50/50">
-                    {visibleItems.map((alert, idx) => (
-                      <AlertRow key={idx} alert={alert} />
-                    ))}
-                    {!isExpanded && hiddenCount > 0 && (
-                      <div className="px-4 py-2 text-center border-t border-slate-100">
-                        <span className="text-[11px] text-slate-400">
-                          +{hiddenCount} más. Expandí para ver todos.
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-function AlertRow({ alert }) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 last:border-b-0 hover:bg-white transition-colors">
-      {/* Mini timeline: 5 dots */}
-      <div className="flex items-center gap-1 flex-shrink-0" title="Progreso del caso">
-        {INTERVALS.map((iv, dotIdx) => {
-          const problemIdx = STAGE_ORDER.indexOf(alert.stageLabel);
-          let dotColor = "#e2e8f0";
-          if (dotIdx < problemIdx) dotColor = "#22c55e";
-          if (dotIdx === problemIdx) dotColor = alert.urgency === "red" ? "#ef4444" : "#f59e0b";
-          return (
-            <span
-              key={dotIdx}
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: dotColor }}
-              title={iv.label}
-            />
-          );
-        })}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <span className="text-sm font-semibold text-slate-800 truncate block">
-          {alert.beneficiario}
-        </span>
-        <span className="text-[11px] text-slate-400">
-          {alert.depto} · DNI {alert.dni}
-        </span>
-      </div>
-
-      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${
-        alert.urgency === "red" ? "text-red-700 bg-red-100" : "text-amber-700 bg-amber-100"
-      }`}>
-        +{alert.daysOverdue}d
-      </span>
     </div>
   );
 }
