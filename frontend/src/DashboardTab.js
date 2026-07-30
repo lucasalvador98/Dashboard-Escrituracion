@@ -1,6 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+
+const INTERVALS = [
+  { key: "diferencia_ingreso_sorteo", label: "Ing→Sort", fullLabel: "Ingreso Colegio → Sorteo", fecha1: "Fecha Ingreso Colegio de Escribanos", fecha2: "Fecha de Sorteo", esperado: 10 },
+  { key: "diferencia_sorteo_aceptacion", label: "Sort→Acep", fullLabel: "Sorteo → Aceptación", fecha1: "Fecha de Sorteo", fecha2: "Fecha de Aceptacion", esperado: 5 },
+  { key: "diferencia_aceptacion_firma", label: "Acep→Firma", fullLabel: "Aceptación → Firma", fecha1: "Fecha de Aceptacion", fecha2: "Fecha de Firma", esperado: 20 },
+  { key: "diferencia_firma_ingreso", label: "Firma→IngD", fullLabel: "Firma → Ingreso Diario", fecha1: "Fecha de Firma", fecha2: "Fecha de Ingreso al Registro", esperado: 5 },
+  { key: "diferencia_ingreso_testimonio", label: "IngD→Test", fullLabel: "Ingreso Diario → Testimonio", fecha1: "Fecha de Ingreso al Registro", fecha2: "Fecha de envío PT digital", esperado: 15 },
+];
 
 function StatusDot({ color }) {
   return (
@@ -11,20 +19,140 @@ function StatusDot({ color }) {
   );
 }
 
+function getEscribano(item) {
+  return item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";
+}
+
+function diffClass(val, esperado) {
+  if (val === "N/A" || val === "" || val == null) return "gray";
+  const n = Number(val);
+  if (isNaN(n)) return "gray";
+  if (n <= esperado) return "green";
+  if (n <= Math.ceil(esperado * 1.3)) return "yellow";
+  return "red";
+}
+
+function parseDate(f) {
+  if (!f || f === "N/A") return null;
+  try {
+    return new Date(f.includes("/") ? f.split("/").reverse().join("-") : f);
+  } catch { return null; }
+}
+
+// ─── Alerts computation ───────────────────────────────────────────────────────
+
+const STAGE_ORDER = ["Ing→Sort", "Sort→Acep", "Acep→Firma", "Firma→IngD", "IngD→Test"];
+
+function computeAlerts(data) {
+  if (!Array.isArray(data) || !data.length) return { totalOverdue: 0, byStage: {}, topOverdue: [], redCount: 0, yellowCount: 0, byStageGrouped: {} };
+
+  const overdue = [];
+  data.forEach(item => {
+    INTERVALS.forEach(iv => {
+      const val = item[iv.key];
+      if (val === "N/A" || val == null) return;
+      const n = Number(val);
+      if (isNaN(n) || n <= iv.esperado) return;
+      const urgency = n <= Math.ceil(iv.esperado * 1.3) ? "yellow" : "red";
+      overdue.push({
+        item,
+        interval: iv,
+        daysOverdue: n - iv.esperado,
+        urgency,
+        stageLabel: iv.label,
+        stageFullLabel: iv.fullLabel,
+        beneficiario: item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? "—",
+        dni: item.DNI || "—",
+        depto: item.Departamento || "—",
+      });
+    });
+  });
+
+  overdue.sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+  const byStage = {};
+  const byStageGrouped = {};
+  let redCount = 0;
+  let yellowCount = 0;
+
+  overdue.forEach(a => {
+    byStage[a.stageLabel] = (byStage[a.stageLabel] || 0) + 1;
+    if (!byStageGrouped[a.stageLabel]) byStageGrouped[a.stageLabel] = [];
+    byStageGrouped[a.stageLabel].push(a);
+    if (a.urgency === "red") redCount++;
+    else yellowCount++;
+  });
+
+  return { totalOverdue: overdue.length, byStage, topOverdue: overdue, redCount, yellowCount, byStageGrouped };
+}
+
+
 export default function DashboardTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
 
+  // ── Filter state ──
+  const [filters, setFilters] = useState({
+    department: "Todos",
+    escribano: "Todos",
+    dateFrom: "",
+    dateTo: "",
+  });
+
+  const setFilter = useCallback((key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setFilters({ department: "Todos", escribano: "Todos", dateFrom: "", dateTo: "" });
+  }, []);
+
+  const hasActiveFilters = filters.department !== "Todos" || filters.escribano !== "Todos" || filters.dateFrom || filters.dateTo;
+
+  // ── Alerts expanded stages ──
+  const [expandedStages, setExpandedStages] = useState({});
+  const toggleStage = useCallback((stage) => {
+    setExpandedStages(prev => ({ ...prev, [stage]: !prev[stage] }));
+  }, []);
+
+  // ── Apply filters ──
+  const filteredData = useMemo(() => {
+    if (!Array.isArray(data)) return [];
+    return data.filter(item => {
+      if (filters.department !== "Todos" && item.Departamento !== filters.department) return false;
+      if (filters.escribano !== "Todos" && getEscribano(item) !== filters.escribano) return false;
+      if (filters.dateFrom || filters.dateTo) {
+        const fechaFirma = parseDate(item["Fecha de Firma"]);
+        if (!fechaFirma) return false;
+        if (filters.dateFrom && fechaFirma < new Date(filters.dateFrom)) return false;
+        if (filters.dateTo && fechaFirma > new Date(filters.dateTo)) return false;
+      }
+      return true;
+    });
+  }, [data, filters]);
+
+  // ── Dropdown options (from full data) ──
+  const { departments, escribanos } = useMemo(() => {
+    if (!Array.isArray(data)) return { departments: [], escribanos: [] };
+    const depts = [...new Set(data.map(i => i.Departamento).filter(Boolean))].sort();
+    const escs = [...new Set(data.map(getEscribano).filter(Boolean))].sort();
+    return { departments: depts, escribanos: escs };
+  }, [data]);
+
+  // ── Alerts (from filtered data) ──
+  const alerts = useMemo(() => computeAlerts(filteredData), [filteredData]);
+
+  // ── KPIs (from filtered data) ──
   const kpis = useMemo(() => {
-    if (!Array.isArray(data)) return null;
+    if (!filteredData.length) return null;
 
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
-    const total = data.length;
+    const total = filteredData.length;
 
     const estadoCount = {};
-    data.forEach(item => {
+    filteredData.forEach(item => {
       const est = (item.Estado || item.estado || "Sin estado").toString().trim();
       estadoCount[est] = (estadoCount[est] || 0) + 1;
     });
@@ -33,7 +161,7 @@ export default function DashboardTab() {
     const finalizadas = (estadoCount["Finalizada sin Entregar"] || 0) + (estadoCount["Entregada"] || 0);
     const deBaja = estadoCount["De Baja"] || 0;
 
-    const finalizadasEsteMes = data.filter(item => {
+    const finalizadasEsteMes = filteredData.filter(item => {
       if (!item["Fecha de Firma"] || item["Fecha de Firma"] === "N/A") return false;
       try {
         const fechaFirma = new Date(item["Fecha de Firma"]);
@@ -41,7 +169,7 @@ export default function DashboardTab() {
       } catch { return false; }
     }).length;
 
-    const proximasFirmas = data
+    const proximasFirmas = filteredData
       .filter(item => {
         if (!item["Fecha de Firma"] || item["Fecha de Firma"] === "N/A") return false;
         try {
@@ -52,9 +180,8 @@ export default function DashboardTab() {
       .sort((a, b) => new Date(a["Fecha de Firma"]) - new Date(b["Fecha de Firma"]))
       .slice(0, 8);
 
-    // Chart data — agrupado por mes de ingreso al colegio
     const monthlyData = {};
-    data.forEach(item => {
+    filteredData.forEach(item => {
       const raw = item["Fecha Ingreso Colegio de Escribanos"];
       if (raw && raw !== "N/A") {
         try {
@@ -73,10 +200,9 @@ export default function DashboardTab() {
       })
       .sort((a, b) => a._key.localeCompare(b._key));
 
-    // Escribanos con más carga
     const escribanoCount = {};
-    data.forEach(item => {
-      const nombre = item["Escribano Designado"] ?? item.Escribano ?? item.escribano;
+    filteredData.forEach(item => {
+      const nombre = getEscribano(item);
       if (nombre && nombre !== "N/A") {
         escribanoCount[nombre] = (escribanoCount[nombre] || 0) + 1;
       }
@@ -89,7 +215,7 @@ export default function DashboardTab() {
       total, enProceso, finalizadas, deBaja, finalizadasEsteMes,
       proximasFirmas, chartData, topEscribanos, estadoCount,
     };
-  }, [data]);
+  }, [filteredData]);
 
   if (loading) {
     return (
@@ -112,6 +238,59 @@ export default function DashboardTab() {
 
   return (
     <div className="space-y-6">
+
+      {/* ── Dashboard Filters ── */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtros</span>
+
+          <select
+            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={filters.department}
+            onChange={e => setFilter("department", e.target.value)}
+          >
+            <option value="Todos">Todos los departamentos</option>
+            {departments.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+
+          <select
+            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={filters.escribano}
+            onChange={e => setFilter("escribano", e.target.value)}
+          >
+            <option value="Todos">Todos los escribanos</option>
+            {escribanos.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+
+          <input
+            type="date"
+            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={filters.dateFrom}
+            onChange={e => setFilter("dateFrom", e.target.value)}
+            placeholder="Desde"
+          />
+          <input
+            type="date"
+            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={filters.dateTo}
+            onChange={e => setFilter("dateTo", e.target.value)}
+            placeholder="Hasta"
+          />
+
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="px-3 py-1.5 text-xs font-semibold text-slate-500 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+            >
+              Limpiar ×
+            </button>
+          )}
+
+          <span className="text-[11px] text-slate-400 ml-auto">
+            {filteredData.length} de {data.length} registros
+          </span>
+        </div>
+      </div>
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -255,7 +434,6 @@ export default function DashboardTab() {
               const fechaRaw = item["Fecha de Firma"];
               let fechaObj = null;
               try { fechaObj = new Date(fechaRaw); } catch {}
-              const esFutura = fechaObj && fechaObj > new Date();
               const diasRestantes = fechaObj ? Math.ceil((fechaObj - new Date()) / (1000 * 60 * 60 * 24)) : null;
 
               return (
@@ -282,6 +460,148 @@ export default function DashboardTab() {
           </div>
         </div>
       )}
+
+      {/* ── Alerts Panel (al final) ── */}
+      {alerts.totalOverdue > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          {/* Header + severity bar */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Alertas</h3>
+              <span className="text-[11px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">
+                {alerts.totalOverdue}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                <span className="font-semibold text-slate-500">{alerts.redCount} demora</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span className="font-semibold text-slate-500">{alerts.yellowCount} alerta</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Severity stacked bar */}
+          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex mb-5">
+            {alerts.redCount > 0 && (
+              <div
+                className="h-full bg-red-500 transition-all duration-500"
+                style={{ width: `${(alerts.redCount / alerts.totalOverdue) * 100}%` }}
+              />
+            )}
+            {alerts.yellowCount > 0 && (
+              <div
+                className="h-full bg-amber-400 transition-all duration-500"
+                style={{ width: `${(alerts.yellowCount / alerts.totalOverdue) * 100}%` }}
+              />
+            )}
+          </div>
+
+          {/* Grouped by stage */}
+          <div className="space-y-3">
+            {STAGE_ORDER.filter(stage => alerts.byStageGrouped[stage]).map(stage => {
+              const allItems = alerts.byStageGrouped[stage];
+              const isExpanded = expandedStages[stage];
+              const visibleItems = isExpanded ? allItems : allItems.slice(0, 5);
+              const hiddenCount = allItems.length - 5;
+              const redInStage = allItems.filter(i => i.urgency === "red").length;
+              const yellowInStage = allItems.filter(i => i.urgency === "yellow").length;
+              const worstDays = allItems[0]?.daysOverdue || 0;
+
+              return (
+                <div key={stage} className="border border-slate-100 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => toggleStage(stage)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <svg
+                      className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span className="text-sm font-bold text-slate-700 flex-1">{stage}</span>
+                    <span className="text-[11px] font-semibold text-slate-400">
+                      {allItems.length} {allItems.length === 1 ? "caso" : "casos"}
+                    </span>
+                    <div className="flex gap-1.5">
+                      {redInStage > 0 && (
+                        <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                          {redInStage} 🔴
+                        </span>
+                      )}
+                      {yellowInStage > 0 && (
+                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                          {yellowInStage} ⚠️
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-slate-600 ml-2">
+                      +{worstDays}d peor
+                    </span>
+                  </button>
+
+                  <div className="border-t border-slate-100 bg-slate-50/50">
+                    {visibleItems.map((alert, idx) => (
+                      <AlertRow key={idx} alert={alert} />
+                    ))}
+                    {!isExpanded && hiddenCount > 0 && (
+                      <div className="px-4 py-2 text-center border-t border-slate-100">
+                        <span className="text-[11px] text-slate-400">
+                          +{hiddenCount} más. Expandí para ver todos.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function AlertRow({ alert }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 last:border-b-0 hover:bg-white transition-colors">
+      {/* Mini timeline: 5 dots */}
+      <div className="flex items-center gap-1 flex-shrink-0" title="Progreso del caso">
+        {INTERVALS.map((iv, dotIdx) => {
+          const problemIdx = STAGE_ORDER.indexOf(alert.stageLabel);
+          let dotColor = "#e2e8f0";
+          if (dotIdx < problemIdx) dotColor = "#22c55e";
+          if (dotIdx === problemIdx) dotColor = alert.urgency === "red" ? "#ef4444" : "#f59e0b";
+          return (
+            <span
+              key={dotIdx}
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: dotColor }}
+              title={iv.label}
+            />
+          );
+        })}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-semibold text-slate-800 truncate block">
+          {alert.beneficiario}
+        </span>
+        <span className="text-[11px] text-slate-400">
+          {alert.depto} · DNI {alert.dni}
+        </span>
+      </div>
+
+      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${
+        alert.urgency === "red" ? "text-red-700 bg-red-100" : "text-amber-700 bg-amber-100"
+      }`}>
+        +{alert.daysOverdue}d
+      </span>
     </div>
   );
 }
@@ -302,7 +622,6 @@ function KPICard({ label, value, color, bg, icon }) {
         {typeof value === "number" ? value.toLocaleString("es-AR") : value}
       </div>
       <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</div>
-      {/* Decorative circle */}
       <div
         className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-[0.07]"
         style={{ backgroundColor: color }}
