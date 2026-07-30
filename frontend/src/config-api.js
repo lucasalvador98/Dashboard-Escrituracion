@@ -1,8 +1,4 @@
-interface ApiConfig {
-  BASE_URL_BACKEND: string;
-}
-
-const API_CONFIG: ApiConfig = {
+const API_CONFIG = {
   BASE_URL_BACKEND: "https://backescr.dirtecno.com",
 };
 
