@@ -125,6 +125,7 @@ const DETALLE_COLUMNS = [
   { key: "dniCot", label: "DNI Cot." },
   { key: "telCot", label: "Tel. Cot." },
   { key: "asistencia", label: "Asistencia" },
+  { key: "escribano", label: "Escribano" },
 ];
 
 function extractDetalleFields(item) {
@@ -139,6 +140,8 @@ function extractDetalleFields(item) {
     tel: item.Telefono ?? item.telefono ?? "—",
     asistencia: item.Asistencia ?? item.ASISTENCIA ?? "—",
     barrio: item.Barrio ?? "—",
+    escribano: item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "—",
+    contactoEscribano: item["Contacto Escribano"] ?? "",
   };
 }
 
@@ -376,6 +379,20 @@ function StockTramite({ data, loading, error }) {
   const [detalle, setDetalle] = useState(null);
   const [firmaForm, setFirmaForm] = useState({ fecha: "", hora: "", lugar: "", nombre: "", tel: "", mail: "" });
 
+  // Pre-cargar datos del escribano cuando se abre el detalle
+  useEffect(() => {
+    if (!detalle || !detalle.items || !detalle.items.length) return;
+    const escribanos = [...new Set(detalle.items.map(i => i["Escribano Designado"] ?? i.Escribano ?? ""))];
+    if (escribanos.length === 1 && escribanos[0]) {
+      const contacto = detalle.items[0]["Contacto Escribano"] || "";
+      setFirmaForm(p => ({
+        ...p,
+        nombre: p.nombre || escribanos[0],
+        tel: p.tel || String(contacto),
+      }));
+    }
+  }, [detalle]);
+
   function toggleDepto(d) { setExpandedDeptos(p => ({ ...p, [d]: !p[d] })); }
   function toggleLoc(d, l) { setExpandedLocs(p => ({ ...p, [d + "|" + l]: !p[d + "|" + l] })); }
 
@@ -505,7 +522,7 @@ function StockTramite({ data, loading, error }) {
             {/* Tabla paginada */}
             <DetalleTable
               items={detalle.items}
-              columns={DETALLE_COLUMNS.slice(0, 5)}
+              columns={DETALLE_COLUMNS}
               renderCell={renderDetalleCell}
             />
           </div>

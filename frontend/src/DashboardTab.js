@@ -35,6 +35,7 @@ function parseDate(f) {
 
 export default function DashboardTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
+  const [activeTab, setActiveTab] = useState("resumen");
 
   // ── Filter state ──
   const [filters, setFilters] = useState({
@@ -160,6 +161,41 @@ export default function DashboardTab() {
     };
   }, [filteredData]);
 
+  // ── Demorados (Acep→Firma > 20d) ──
+  const demorados = useMemo(() => {
+    if (!filteredData.length) return [];
+    const ESCROW_ESPERADO = 20;
+    const byEscribano = {};
+
+    filteredData.forEach(item => {
+      const val = item.diferencia_aceptacion_firma;
+      if (val === "N/A" || val == null) return;
+      const n = Number(val);
+      if (isNaN(n) || n <= ESCROW_ESPERADO) return;
+
+      const nombre = getEscribano(item);
+      if (!nombre) return;
+      const beneficiario = item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? "—";
+
+      if (!byEscribano[nombre]) byEscribano[nombre] = { items: [] };
+      byEscribano[nombre].items.push({
+        beneficiario,
+        dni: item.DNI || "—",
+        depto: item.Departamento || "—",
+        barrio: item.Barrio || "—",
+        dias: n,
+        demora: n - ESCROW_ESPERADO,
+      });
+    });
+
+    return Object.values(byEscribano)
+      .map(e => ({
+        ...e,
+        avgDemora: Math.round(e.items.reduce((s, i) => s + i.demora, 0) / e.items.length),
+      }))
+      .sort((a, b) => b.items.length - a.items.length);
+  }, [filteredData]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
@@ -182,7 +218,29 @@ export default function DashboardTab() {
   return (
     <div className="space-y-6">
 
-      {/* ── Dashboard Filters ── */}
+      {/* ── Tab Switcher ── */}
+      <div className="flex bg-slate-100 rounded-lg p-0.5 w-fit">
+        {[
+          { key: "resumen", label: "Resumen" },
+          { key: "demorados", label: `Demorados (${demorados.reduce((s, e) => s + e.items.length, 0)})` },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
+              activeTab === tab.key
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "resumen" ? (
+        <>
+          {/* ── Dashboard Filters ── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtros</span>
@@ -421,6 +479,77 @@ export default function DashboardTab() {
               );
             })}
           </div>
+        </div>
+      )}
+
+        </>
+
+      ) : (
+        /* ── Tab: Demorados ── */
+        <div className="space-y-4">
+          {demorados.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center">
+              <span className="text-3xl">✅</span>
+              <p className="text-sm text-slate-500 font-medium mt-2">Sin demoras — todos los casos están dentro del plazo</p>
+            </div>
+          ) : (
+            <>
+              {/* Resumen por escribano */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Demora por Escribano</h3>
+                  <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                    {demorados.reduce((s, e) => s + e.items.length, 0)} casos con demora
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {demorados.map(esc => (
+                    <div key={esc.nombre} className="border border-slate-100 rounded-xl p-4 hover:border-slate-200 transition-colors">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold text-slate-800">{esc.nombre}</span>
+                          <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                            {esc.items.length} {esc.items.length === 1 ? "caso" : "casos"}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400">Promedio: +{esc.avgDemora}d</span>
+                      </div>
+
+                      {/* Tabla de personas */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-100">
+                              <th className="text-left py-1.5 px-2 text-[10px] font-bold text-slate-400 uppercase">Beneficiario</th>
+                              <th className="text-left py-1.5 px-2 text-[10px] font-bold text-slate-400 uppercase">DNI</th>
+                              <th className="text-left py-1.5 px-2 text-[10px] font-bold text-slate-400 uppercase">Depto</th>
+                              <th className="text-left py-1.5 px-2 text-[10px] font-bold text-slate-400 uppercase">Barrio</th>
+                              <th className="text-center py-1.5 px-2 text-[10px] font-bold text-slate-400 uppercase">Días</th>
+                              <th className="text-center py-1.5 px-2 text-[10px] font-bold text-slate-400 uppercase">Demora</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {esc.items.map((item, idx) => (
+                              <tr key={idx} className="border-b border-slate-50 last:border-0">
+                                <td className="py-1.5 px-2 font-semibold text-slate-700">{item.beneficiario}</td>
+                                <td className="py-1.5 px-2 font-mono text-slate-500">{item.dni}</td>
+                                <td className="py-1.5 px-2 text-slate-600">{item.depto}</td>
+                                <td className="py-1.5 px-2 text-slate-600">{item.barrio}</td>
+                                <td className="py-1.5 px-2 text-center font-bold text-slate-800">{item.dias}d</td>
+                                <td className="py-1.5 px-2 text-center">
+                                  <span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">+{item.demora}d</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 

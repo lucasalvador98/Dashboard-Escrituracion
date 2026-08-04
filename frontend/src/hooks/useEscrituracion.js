@@ -106,7 +106,7 @@ export function diffClass(val, esperado, forceRedAbove) {
 
 const itemsPerPage = 15;
 
-export default function useEscrituracion(rawData, filters, setFilters, extraFilter) {
+export default function useEscrituracion(rawData, filters, setFilters) {
   const [sortCol, setSortCol] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [page, setPage] = useState(1);
@@ -157,11 +157,7 @@ export default function useEscrituracion(rawData, filters, setFilters, extraFilt
   }, [allColumns]);
 
   const processedData = useMemo(() => generarReporte(rawData), [rawData]);
-  const baseFilteredData = useMemo(() => applyFiltersToData(processedData, filters), [processedData, filters]);
-  const filteredData = useMemo(() => {
-    if (!extraFilter) return baseFilteredData;
-    return extraFilter(baseFilteredData);
-  }, [baseFilteredData, extraFilter]);
+  const filteredData = useMemo(() => applyFiltersToData(processedData, filters), [processedData, filters]);
 
   useEffect(() => {
     const estadoFromDropdown = filters.estado && filters.estado !== "Todos" ? filters.estado : null;

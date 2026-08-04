@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
 import useExportCSV from "./hooks/useExportCSV";
@@ -22,18 +22,7 @@ export default function Escrituracion() {
   });
 
   const rawData = Array.isArray(data) ? data : [];
-  const [soloDemorados, setSoloDemorados] = useState(false);
-
-  const demoradoFilter = useMemo(() => {
-    if (!soloDemorados) return null;
-    return (data) => data.filter(item => {
-      const val = item.diferencia_aceptacion_firma;
-      if (val === "N/A" || val == null) return false;
-      return Number(val) > 20;
-    });
-  }, [soloDemorados]);
-
-  const hook = useEscrituracion(rawData, filters, setFilters, demoradoFilter);
+  const hook = useEscrituracion(rawData, filters, setFilters);
 
   const exportColumns = hook.allColumns
     .filter(c => hook.visibleCols.includes(c.key))
@@ -89,13 +78,6 @@ export default function Escrituracion() {
         <button className="toolbar-btn" onClick={exportCSV} title="Exportar CSV">
           <FileDownload sx={{ fontSize: 16 }} />
           Exportar
-        </button>
-        <button
-          className={`toolbar-btn ${soloDemorados ? "active" : ""}`}
-          onClick={() => setSoloDemorados(prev => !prev)}
-          title="Mostrar solo registros con Acep→Firma > 20d"
-        >
-          {soloDemorados ? "🔴 Demorados" : "⏳ Solo demorados"}
         </button>
         <div className="toolbar-group-right">
           <button
@@ -156,11 +138,6 @@ export default function Escrituracion() {
               <span>Sin datos</span>
             </div>
             <div className="legend-item text-slate-400 ml-auto text-[10px]">
-              {soloDemorados && (
-                <span className="text-red-500 font-semibold mr-2">
-                  Solo demorados ({hook.sortedData.length} registros)
-                </span>
-              )}
               {hook.sortedData.length} registros
             </div>
           </div>
