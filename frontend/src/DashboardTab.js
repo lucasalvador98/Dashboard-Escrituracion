@@ -331,19 +331,30 @@ export default function DashboardTab() {
               { label: "No Retiradas", count: kpis.estadoCount["No Retiradas"] || 0, color: "#94a3b8" },
             ].filter(s => s.count > 0).map(s => {
               const pct = kpis.total ? Math.round((s.count / kpis.total) * 100) : 0;
+              const isActive = filters.status === s.label;
+              const handleClick = () => {
+                setFilter("status", isActive ? "Todos" : s.label);
+              };
               return (
-                <div key={s.label}>
+                <div
+                  key={s.label}
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleClick}
+                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
+                  className={`cursor-pointer rounded-lg p-1.5 -m-1.5 transition-colors ${isActive ? "bg-slate-100" : "hover:bg-slate-50"}`}
+                >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <StatusDot color={s.color} />
-                      <span className="text-xs font-semibold text-slate-600">{s.label}</span>
+                      <span className={`text-xs font-semibold ${isActive ? "text-slate-900" : "text-slate-600"}`}>{s.label}</span>
                     </div>
                     <span className="text-xs font-bold text-slate-800">{s.count}</span>
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{ width: `${pct}%`, backgroundColor: s.color }}
+                      style={{ width: `${pct}%`, backgroundColor: s.color, opacity: filters.status && !isActive ? 0.3 : 1 }}
                     />
                   </div>
                 </div>
