@@ -94,18 +94,19 @@ function generarReporte(arr) {
   });
 }
 
-export function diffClass(val, esperado) {
+export function diffClass(val, esperado, forceRedAbove) {
   if (val === "N/A" || val === "" || val == null) return "gray";
   const n = Number(val);
   if (isNaN(n)) return "gray";
+  const redThreshold = forceRedAbove != null ? forceRedAbove : Math.ceil(esperado * 1.3);
   if (n <= esperado) return "green";
-  if (n <= Math.ceil(esperado * 1.3)) return "yellow";
+  if (n <= redThreshold) return "yellow";
   return "red";
 }
 
 const itemsPerPage = 15;
 
-export default function useEscrituracion(rawData, filters, setFilters) {
+export default function useEscrituracion(rawData, filters, setFilters, extraFilter) {
   const [sortCol, setSortCol] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [page, setPage] = useState(1);
@@ -156,7 +157,11 @@ export default function useEscrituracion(rawData, filters, setFilters) {
   }, [allColumns]);
 
   const processedData = useMemo(() => generarReporte(rawData), [rawData]);
-  const filteredData = useMemo(() => applyFiltersToData(processedData, filters), [processedData, filters]);
+  const baseFilteredData = useMemo(() => applyFiltersToData(processedData, filters), [processedData, filters]);
+  const filteredData = useMemo(() => {
+    if (!extraFilter) return baseFilteredData;
+    return extraFilter(baseFilteredData);
+  }, [baseFilteredData, extraFilter]);
 
   useEffect(() => {
     const estadoFromDropdown = filters.estado && filters.estado !== "Todos" ? filters.estado : null;

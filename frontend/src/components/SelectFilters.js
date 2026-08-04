@@ -20,7 +20,18 @@ export default function SelectFilters({ data = [], filters = {}, setFilters }) {
   const localidadesAll = unique(data.map(i => i.Localidad));
   const barriosAll = unique(data.map(i => i.Barrio));
   const estados = ["Todos", ...unique(data.map(i => i.Estado))];
-  const escribanosList = ["Todos", ...unique(data.map(i => getEscribano(i)))];
+  const escribanosList = unique(data.map(i => getEscribano(i)));
+
+  // Conteo de demoras por escribano (Acep→Firma > 20d)
+  const demoraCount = {};
+  data.forEach(i => {
+    const val = i.diferencia_aceptacion_firma;
+    if (val === "N/A" || val == null) return;
+    if (Number(val) > 20) {
+      const nombre = getEscribano(i);
+      if (nombre) demoraCount[nombre] = (demoraCount[nombre] || 0) + 1;
+    }
+  });
 
   // Filtrado dependiente
   const localidades = filters.departamento && filters.departamento !== "Todos"
@@ -93,7 +104,14 @@ export default function SelectFilters({ data = [], filters = {}, setFilters }) {
             value={escribanoValue}
             onChange={e => setFilters({ escribano: e.target.value === "Todos" ? "" : e.target.value })}
           >
-            {escribanosList.map(s => <option key={s} value={s}>{s}</option>)}
+            {["Todos", ...escribanosList].map(s => {
+              const count = s === "Todos" ? 0 : (demoraCount[s] || 0);
+              return (
+                <option key={s} value={s}>
+                  {count > 0 ? `${s} (${count} demora)` : s}
+                </option>
+              );
+            })}
           </select>
         </div>
 
