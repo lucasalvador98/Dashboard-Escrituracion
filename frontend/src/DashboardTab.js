@@ -40,6 +40,7 @@ export default function DashboardTab() {
   const [filters, setFilters] = useState({
     department: "Todos",
     escribano: "Todos",
+    status: "Todos",
     dateFrom: "",
     dateTo: "",
   });
@@ -49,10 +50,10 @@ export default function DashboardTab() {
   }, []);
 
   const clearFilters = useCallback(() => {
-    setFilters({ department: "Todos", escribano: "Todos", dateFrom: "", dateTo: "" });
+    setFilters({ department: "Todos", escribano: "Todos", status: "Todos", dateFrom: "", dateTo: "" });
   }, []);
 
-  const hasActiveFilters = filters.department !== "Todos" || filters.escribano !== "Todos" || filters.dateFrom || filters.dateTo;
+  const hasActiveFilters = filters.department !== "Todos" || filters.escribano !== "Todos" || filters.status !== "Todos" || filters.dateFrom || filters.dateTo;
 
   // ── Apply filters ──
   const filteredData = useMemo(() => {
@@ -60,6 +61,10 @@ export default function DashboardTab() {
     return data.filter(item => {
       if (filters.department !== "Todos" && item.Departamento !== filters.department) return false;
       if (filters.escribano !== "Todos" && getEscribano(item) !== filters.escribano) return false;
+      if (filters.status !== "Todos") {
+        const est = (item.Estado || item.estado || "").toString().trim();
+        if (est !== filters.status) return false;
+      }
       if (filters.dateFrom || filters.dateTo) {
         const fechaFirma = parseDate(item["Fecha de Firma"]);
         if (!fechaFirma) return false;
@@ -71,11 +76,12 @@ export default function DashboardTab() {
   }, [data, filters]);
 
   // ── Dropdown options (from full data) ──
-  const { departments, escribanos } = useMemo(() => {
-    if (!Array.isArray(data)) return { departments: [], escribanos: [] };
+  const { departments, escribanos, statuses } = useMemo(() => {
+    if (!Array.isArray(data)) return { departments: [], escribanos: [], statuses: [] };
     const depts = [...new Set(data.map(i => i.Departamento).filter(Boolean))].sort();
     const escs = [...new Set(data.map(getEscribano).filter(Boolean))].sort();
-    return { departments: depts, escribanos: escs };
+    const stats = [...new Set(data.map(i => (i.Estado || i.estado || "").toString().trim()).filter(Boolean))].sort();
+    return { departments: depts, escribanos: escs, statuses: stats };
   }, [data]);
 
   // ── KPIs (from filtered data) ──
@@ -197,6 +203,15 @@ export default function DashboardTab() {
           >
             <option value="Todos">Todos los escribanos</option>
             {escribanos.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+
+          <select
+            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={filters.status}
+            onChange={e => setFilter("status", e.target.value)}
+          >
+            <option value="Todos">Todos los estados</option>
+            {statuses.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
           <input

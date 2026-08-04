@@ -14,6 +14,8 @@ export const TABLE_COLUMNS = [
   { key: "Departamento", label: "Departamento", alwaysOn: true },
   { key: "Localidad", label: "Localidad", alwaysOn: true },
   { key: "Barrio", label: "Barrio", alwaysOn: true },
+  { key: "Mza. Plano", label: "Mza", alwaysOn: true },
+  { key: "Lote Plano", label: "Lt", alwaysOn: true },
   { key: "Beneficiarios", label: "Beneficiario", alwaysOn: true },
   { key: "DNI", label: "DNI", alwaysOn: true },
   { key: "Escribano Designado", label: "Escribano", alwaysOn: false },
@@ -38,7 +40,7 @@ const DEFAULT_ACTIVE_KEYS = new Set([
 ]);
 
 const COLUMN_GROUPS = [
-  { label: "Ubicación", keys: ["Departamento", "Localidad", "Barrio"] },
+  { label: "Ubicación", keys: ["Departamento", "Localidad", "Barrio", "Mza. Plano", "Lote Plano"] },
   { label: "Partes", keys: ["Beneficiarios", "DNI", "Escribano Designado"] },
   { label: "Estado", keys: ["Estado"] },
   { label: "Plazos", keys: INTERVAL_KEYS },

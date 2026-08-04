@@ -229,11 +229,29 @@
   background: inherit;
 }
 
+/* Mza — 5th column */
+.matrix-table th:nth-child(5),
+.matrix-table td:nth-child(5) {
+  left: 340px;
+  z-index: 3;
+  background: inherit;
+}
+
+/* Lote — 6th column */
+.matrix-table th:nth-child(6),
+.matrix-table td:nth-child(6) {
+  left: 395px;
+  z-index: 3;
+  background: inherit;
+}
+
 /* Ensure sticky cells have solid background */
 .matrix-table thead th:nth-child(1),
 .matrix-table thead th:nth-child(2),
 .matrix-table thead th:nth-child(3),
-.matrix-table thead th:nth-child(4) {
+.matrix-table thead th:nth-child(4),
+.matrix-table thead th:nth-child(5),
+.matrix-table thead th:nth-child(6) {
   background: #f8fafc !important;
   z-index: 4;
 }
@@ -241,13 +259,17 @@
 .matrix-table tbody td:nth-child(1),
 .matrix-table tbody td:nth-child(2),
 .matrix-table tbody td:nth-child(3),
-.matrix-table tbody td:nth-child(4) {
+.matrix-table tbody td:nth-child(4),
+.matrix-table tbody td:nth-child(5),
+.matrix-table tbody td:nth-child(6) {
   background: #fff !important;
 }
 
 .matrix-table tbody tr:hover td:nth-child(1),
 .matrix-table tbody tr:hover td:nth-child(2),
 .matrix-table tbody tr:hover td:nth-child(3),
-.matrix-table tbody tr:hover td:nth-child(4) {
+.matrix-table tbody tr:hover td:nth-child(4),
+.matrix-table tbody tr:hover td:nth-child(5),
+.matrix-table tbody tr:hover td:nth-child(6) {
   background: rgba(59, 130, 246, 0.04) !important;
 }
