@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useMemo } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import useFilters from "./hooks/useFilters";
 import useExportCSV from "./hooks/useExportCSV";
@@ -23,6 +23,67 @@ export default function Escrituracion() {
 
   const rawData = Array.isArray(data) ? data : [];
   const hook = useEscrituracion(rawData, filters, setFilters);
+
+  // ── Demora por escribano (Acep→Firma > 20d hábiles) ──
+  const ESCROW_ESPERADO = 20;
+  const demoraPorEscribano = useMemo(() => {
+    if (!hook.processedData.length) return [];
+    const byEscribano = {};
+
+    hook.processedData.forEach(item => {
+      const val = item.diferencia_aceptacion_firma;
+      if (val === "N/A" || val == null) return;
+      const n = Number(val);
+      if (isNaN(n) || n <= ESCROW_ESPERADO) return;
+
+      const nombre = item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";
+      if (!nombre) return;
+
+      if (!byEscribano[nombre]) byEscribano[nombre] = { count: 0, items: [] };
+      byEscribano[nombre].count++;
+      byEscribano[nombre].items.push({
+        beneficiario: item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? "—",
+        dni: item.DNI || "—",
+        depto: item.Departamento || "—",
+        barrio: item.Barrio || "—",
+        dias: n,
+        demora: n - ESCROW_ESPERADO,
+      });
+    });
+
+    return Object.values(byEscribano)
+      .map(e => ({ ...e, avgDemora: Math.round(e.items.reduce((s, i) => s + i.demora, 0) / e.items.length) }))
+      .sort((a, b) => b.items.length - a.items.length);
+  }, [hook.processedData]);
+
+  const demoraTotal = demoraPorEscribano.reduce((s, e) => s + e.items.length, 0);
+
+  const exportDemoraCSV = () => {
+    if (!demoraPorEscribano.length) return;
+    const rows = [];
+    demoraPorEscribano.forEach(esc => {
+      esc.items.forEach(item => {
+        rows.push({
+          Escribano: esc.nombre,
+          Beneficiario: item.beneficiario,
+          DNI: item.dni,
+          Departamento: item.depto,
+          Barrio: item.barrio,
+          "Días Acep→Firma": item.dias,
+          "Días de Demora": item.demora,
+        });
+      });
+    });
+    const headers = Object.keys(rows[0]);
+    const csv = [headers.join(","), ...rows.map(r => headers.map(h => `"${r[h]}"`).join(","))].join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Demora_Escribanos_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const exportColumns = hook.allColumns
     .filter(c => hook.visibleCols.includes(c.key))
@@ -110,6 +171,60 @@ export default function Escrituracion() {
         setFilters={setFilters}
         setPage={hook.setPage}
       />
+
+      {/* ── Demora por Escribano (Acep→Firma) ── */}
+      {demoraTotal > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Demora por Escribano</h3>
+              <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                Acep→Firma &gt; {ESCROW_ESPERADO}d
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-semibold text-slate-400">{demoraTotal} casos</span>
+              <button
+                onClick={exportDemoraCSV}
+                className="toolbar-btn text-[11px]"
+                title="Exportar listado de demora"
+              >
+                <FileDownload sx={{ fontSize: 14 }} />
+                Descargar
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {demoraPorEscribano.map(esc => (
+              <div key={esc.nombre} className="border border-slate-100 rounded-xl p-3 hover:border-slate-200 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-slate-800 truncate">{esc.nombre}</span>
+                  <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                    {esc.items.length} {esc.items.length === 1 ? "caso" : "casos"}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 mb-2">
+                  Promedio: +{esc.avgDemora}d de demora
+                </div>
+                <div className="space-y-1">
+                  {esc.items.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-600 truncate">{item.beneficiario}</span>
+                      <span className="font-bold text-red-600 ml-2 flex-shrink-0">+{item.demora}d</span>
+                    </div>
+                  ))}
+                  {esc.items.length > 3 && (
+                    <div className="text-[10px] text-slate-300 text-center">
+                      +{esc.items.length - 3} más
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="flex justify-center py-16">
