@@ -16,6 +16,7 @@ COLUMNS = [
     ("COTITULAR - DNI", 24),
     ("Tel. Cotitular", 41),
     ("ASISTENCIA", 15),
+    ("ESCRIBANO", 35),
 ]
 
 THIN_BORDER = Border(
@@ -122,6 +123,10 @@ def generar_excel(datos, titulo="", subtitulo=""):
         ws.cell(row_num, 11, _get(item, "Asistencia", "ASISTENCIA")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 11).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 11).border = THIN_BORDER
+
+        ws.cell(row_num, 12, _get(item, "Escribano Designado", "Escribano", "escribano")).font = Font(name="Arial", size=12)
+        ws.cell(row_num, 12).alignment = Alignment(horizontal="center", vertical="center")
+        ws.cell(row_num, 12).border = THIN_BORDER
 
     # Guardar en memoria
     buffer = io.BytesIO()

@@ -160,6 +160,37 @@ export default function DashboardTab() {
     };
   }, [filteredData]);
 
+  // ── Demora por escribano (Aceptación → Firma) ──
+  const demoraPorEscribano = useMemo(() => {
+    if (!filteredData.length) return [];
+    const ESCROW_ESPERADO = 20; // días hábidos esperados para Acep→Firma
+    const byEscribano = {};
+
+    filteredData.forEach(item => {
+      const val = item.diferencia_aceptacion_firma;
+      if (val === "N/A" || val == null) return;
+      const n = Number(val);
+      if (isNaN(n) || n <= ESCROW_ESPERADO) return;
+
+      const nombre = getEscribano(item);
+      if (!nombre) return;
+
+      if (!byEscribano[nombre]) byEscribano[nombre] = { count: 0, items: [] };
+      byEscribano[nombre].count++;
+      byEscribano[nombre].items.push({
+        beneficiario: item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? "—",
+        dni: item.DNI || "—",
+        depto: item.Departamento || "—",
+        dias: n,
+        demora: n - ESCROW_ESPERADO,
+      });
+    });
+
+    return Object.values(byEscribano)
+      .map(e => ({ ...e, avgDemora: Math.round(e.items.reduce((s, i) => s + i.demora, 0) / e.items.length) }))
+      .sort((a, b) => b.items.length - a.items.length);
+  }, [filteredData]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
@@ -291,6 +322,52 @@ export default function DashboardTab() {
           }
         />
       </div>
+
+      {/* ── Demora por Escribano (Acep→Firma) ── */}
+      {demoraPorEscribano.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Demora por Escribano</h3>
+              <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                Acep→Firma &gt; 20d
+              </span>
+            </div>
+            <span className="text-[11px] font-semibold text-slate-400">
+              {demoraPorEscribano.reduce((s, e) => s + e.items.length, 0)} casos
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {demoraPorEscribano.map(esc => (
+              <div key={esc.nombre} className="border border-slate-100 rounded-xl p-3 hover:border-slate-200 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-slate-800 truncate">{esc.nombre}</span>
+                  <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                    {esc.items.length} {esc.items.length === 1 ? "caso" : "casos"}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 mb-2">
+                  Promedio: +{esc.avgDemora}d de demora
+                </div>
+                <div className="space-y-1">
+                  {esc.items.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-600 truncate">{item.beneficiario}</span>
+                      <span className="font-bold text-red-600 ml-2 flex-shrink-0">+{item.demora}d</span>
+                    </div>
+                  ))}
+                  {esc.items.length > 3 && (
+                    <div className="text-[10px] text-slate-300 text-center">
+                      +{esc.items.length - 3} más
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Row: Chart + Estado breakdown ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

@@ -16,6 +16,7 @@ FIRMA_COLUMNS = [
     ("COTITULAR - Nombre y Apellido", 35),
     ("COTITULAR - DNI", 15),
     ("Telefono", 18),
+    ("ESCRIBANO", 35),
 ]
 
 THIN_BORDER = Border(
@@ -152,6 +153,10 @@ def generar_firma_excel(datos, titulo="", fecha="", hora="", lugar="", escribano
         ws.cell(row_num, 12, _get(item, "COTITULAR Telefono", "Tel. Cotitular", "TelefonoCotitular")).font = Font(name="Arial", size=12)
         ws.cell(row_num, 12).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row_num, 12).border = THIN_BORDER
+
+        ws.cell(row_num, 13, _get(item, "Escribano Designado", "Escribano", "escribano")).font = Font(name="Arial", size=12)
+        ws.cell(row_num, 13).alignment = Alignment(horizontal="center", vertical="center")
+        ws.cell(row_num, 13).border = THIN_BORDER
 
     buffer = io.BytesIO()
     wb.save(buffer)
