@@ -20,6 +20,11 @@ npm-debug.log*
 
 # AI / Editor config
 .atl/
+.codegraph/
+
+# Notas de trabajo (no versionar)
+START_Phase_2_Refactor_Escrituracion.js.md
+frontend/src/tasks.md
 
 # Docker
 *.log
