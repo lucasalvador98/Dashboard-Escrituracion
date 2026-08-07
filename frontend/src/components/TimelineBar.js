@@ -36,14 +36,14 @@ export default function TimelineBar({ stages = STAGES, intervals = [], item, hig
           const interval = intervals[idx];
           const status = interval ? getSegmentStatus(stage, interval) : "empty";
           
-          let bgColor = "bg-gray-200";
+          let bgColor = "bg-slate-200";
           if (status === "filled") {
             if (interval) {
               const val = item[interval.key];
               bgColor = diffClass(val, interval.esperado);
             }
           } else if (status === "filled-future") {
-            bgColor = "bg-blue-400";
+            bgColor = "bg-primary-400";
           }
 
           const relevantInterval = idx > 0 && intervals[idx - 1] ? intervals[idx - 1] : null;
@@ -52,7 +52,7 @@ export default function TimelineBar({ stages = STAGES, intervals = [], item, hig
           return (
             <div key={idx} className="flex flex-col items-center">
               <div 
-                className={`tl-segment ${bgColor} ${status === "empty" ? "opacity-30" : "opacity-100"} ${isHighlighted ? "ring-2 ring-blue-500 shadow-md transform scale-110" : ""}`}
+                className={`tl-segment ${bgColor} ${status === "empty" ? "opacity-30" : "opacity-100"} ${isHighlighted ? "ring-2 ring-primary-500 shadow-md transform scale-110" : ""}`}
                 title={`${stage.label}: ${interval ? item[stage.field] || "—" : "—"}`}
               />
               <div className="text-xs text-slate-600 mt-1 text-center truncate max-w-[60px]">

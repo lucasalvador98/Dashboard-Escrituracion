@@ -5,18 +5,16 @@ import useExportCSV from "./hooks/useExportCSV";
 import useEscrituracion, { TABLE_COLUMNS, INTERVALS } from "./hooks/useEscrituracion";
 import SelectFilters from "./components/SelectFilters";
 import SlidePanel from "./components/SlidePanel";
-import ColumnToggle from "./components/ColumnToggle";
 import MatrixTable from "./components/MatrixTable";
 import StatusCards from "./components/StatusCards";
 import DateDetailPanel from "./components/DateDetailPanel";
 import FileDownload from '@mui/icons-material/FileDownload';
-import ViewColumn from '@mui/icons-material/ViewColumn';
 
 const itemsPerPage = 15;
 
 export default function Escrituracion() {
   const { data, loading, error } = useDataLoader("escrituracion");
-  const { filters, setFilters } = useFilters({
+  const { filters, setFilters, resetFilters } = useFilters({
     departamento: "Todos", localidad: "Todos", barrio: "Todos",
     estado: "Todos", escribano: "", dni: ""
   });
@@ -79,28 +77,9 @@ export default function Escrituracion() {
           <FileDownload sx={{ fontSize: 16 }} />
           Exportar
         </button>
-        <div className="toolbar-group-right">
-          <button
-            className={`toolbar-btn ${hook.showColToggle ? "active" : ""}`}
-            onClick={() => hook.setShowColToggle(prev => !prev)}
-            title="Mostrar/ocultar columnas"
-          >
-            <ViewColumn sx={{ fontSize: 16 }} />
-            Columnas
-          </button>
-          {hook.showColToggle && (
-            <ColumnToggle
-              columns={hook.allColumns}
-              groups={hook.allGroups}
-              visibleCols={hook.visibleCols}
-              onToggle={hook.toggleColumn}
-              onClose={() => hook.setShowColToggle(false)}
-            />
-          )}
-        </div>
       </div>
 
-      <SelectFilters data={hook.processedData} filters={filters} setFilters={setFilters} />
+      <SelectFilters data={hook.processedData} filters={filters} setFilters={setFilters} resetFilters={resetFilters} />
 
       <StatusCards
         counts={hook.counts}
@@ -154,6 +133,10 @@ export default function Escrituracion() {
             filterByField={hook.filterByField}
             setIntervalDetail={hook.setIntervalDetail}
             filters={filters}
+            allGroups={hook.allGroups}
+            toggleColumn={hook.toggleColumn}
+            showColToggle={hook.showColToggle}
+            setShowColToggle={hook.setShowColToggle}
           />
 
           {renderPagination()}

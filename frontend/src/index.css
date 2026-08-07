@@ -6,6 +6,67 @@
 @import "./styles/tables.css";
 @import "./styles/detail.css";
 
+/* ============================================================
+   Design Tokens — única fuente de verdad para valores clave
+   ============================================================ */
+:root {
+  /* Surfaces */
+  --color-app-bg: #f8fafc;          /* slate-50  */
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8fafc;  /* slate-50  */
+  --color-surface-muted: #f1f5f9;   /* slate-100 */
+  --color-surface-strong: #e2e8f0;  /* slate-200 */
+
+  /* Text */
+  --color-text: #1e293b;            /* slate-800 */
+  --color-text-strong: #0f172a;     /* slate-900 */
+  --color-text-muted: #64748b;      /* slate-500 */
+  --color-text-faint: #94a3b8;      /* slate-400 */
+
+  /* Borders */
+  --color-border: #e2e8f0;          /* slate-200 */
+  --color-border-soft: #f1f5f9;     /* slate-100 */
+  --color-border-strong: #cbd5e1;   /* slate-300 */
+
+  /* Brand (primary blue-600) */
+  --color-primary: #2563eb;
+  --color-primary-strong: #1d4ed8;
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-300: #93c5fd;
+  --color-primary-500: #3b82f6;
+
+  /* Semantic */
+  --color-success: #10b981;         /* emerald-500 */
+  --color-warning: #f59e0b;         /* amber-500   */
+  --color-error: #ef4444;           /* red-500     */
+  --color-error-200: #fecaca;
+  --color-error-700: #b91c1c;
+  --color-error-800: #991b1b;
+
+  /* Overlay / scrim */
+  --color-overlay: rgba(15, 23, 42, 0.35);
+
+  /* Radii */
+  --radius-md: 0.5rem;              /* rounded-lg   */
+  --radius-lg: 0.75rem;             /* rounded-xl   */
+  --radius-xl: 1rem;                /* rounded-2xl  */
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-card: 0 2px 15px -3px rgba(2, 6, 23, 0.07), 0 10px 20px -2px rgba(2, 6, 23, 0.04);
+  --shadow-soft: 0 2px 15px -3px rgba(2, 6, 23, 0.07);
+  --shadow-panel: 0 25px 50px -12px rgba(2, 6, 23, 0.25);
+
+  /* Spacing base */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+}
+
 /* Estilos base */
 * {
   margin: 0;
@@ -20,26 +81,25 @@ html, body, #root {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: var(--color-app-bg);
+  color: var(--color-text);
 }
 
 /* Layout principal */
 .app-root {
-  @apply flex h-screen bg-[#f8fafc];
+  @apply flex h-screen bg-slate-50;
 }
 
 .app-sidebar {
-  @apply w-56 bg-white border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)];
+  @apply w-56 bg-white border-r border-slate-200/60 shadow-card;
 }
-
 
 .app-content {
   @apply flex-1 flex flex-col overflow-hidden;
 }
 
 .app-header {
-  @apply bg-white shadow-sm border-b border-gray-200 px-6 py-4;
+  @apply bg-white shadow-sm border-b border-slate-200 px-6 py-4;
 }
 
 .app-main {
@@ -50,18 +110,17 @@ body {
   @apply bg-white border-t border-slate-200/60 px-8 py-4 text-sm text-slate-400 font-medium;
 }
 
-
 /* Navegación */
 .nav-tabs {
-  @apply flex gap-2 border-b border-gray-200;
+  @apply flex gap-2 border-b border-slate-200;
 }
 
 .nav-tab {
-  @apply px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent hover:border-blue-500 transition-all cursor-pointer;
+  @apply px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 border-b-2 border-transparent hover:border-primary-500 transition-all cursor-pointer;
 }
 
 .nav-tab.active {
-  @apply text-blue-600 border-b-2 border-blue-600;
+  @apply text-primary-600 border-b-2 border-primary-600;
 }
 
 .nav-subtabs {
@@ -69,33 +128,33 @@ body {
 }
 
 .nav-subtab {
-  @apply px-3 py-1 text-xs font-medium text-gray-500 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer transition-colors;
+  @apply px-3 py-1 text-xs font-medium text-slate-500 bg-slate-100 rounded hover:bg-slate-200 cursor-pointer transition-colors;
 }
 
 .nav-subtab.active {
-  @apply bg-blue-600 text-white;
+  @apply bg-primary-600 text-white;
 }
 
 /* Tarjetas */
 .card {
-  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+  @apply bg-white rounded-lg shadow-sm border border-slate-200 p-4;
 }
 
 .card-hover {
-  @apply transition-all hover:shadow-md hover:border-gray-300;
+  @apply transition-all hover:shadow-md hover:border-slate-300;
 }
 
 .card-header {
-  @apply border-b border-gray-200 pb-3 mb-3;
+  @apply border-b border-slate-200 pb-3 mb-3;
 }
 
 .card-title {
-  @apply text-lg font-semibold text-gray-800;
+  @apply text-lg font-semibold text-slate-800;
 }
 
 /* Filtros */
 .filter-section {
-  @apply w-full bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] p-3 mb-6 border border-gray-100;
+  @apply w-full bg-white rounded-xl shadow-card p-3 mb-6 border border-slate-200/70;
 }
 
 .filter-group {
@@ -107,16 +166,16 @@ body {
 }
 
 .filter-item label {
-  @apply text-[11px] font-bold text-gray-500 uppercase tracking-widest ml-1 mb-0.5;
+  @apply text-[11px] font-bold text-slate-500 uppercase tracking-widest ml-1 mb-0.5;
 }
 
 .filter-item input,
 .filter-item select {
-  @apply w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50/50 hover:bg-white transition-all h-10 appearance-none shadow-sm;
+  @apply w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-slate-50/50 hover:bg-white transition-all h-10 appearance-none shadow-sm;
 }
 
 .filter-item select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.5rem center;
   background-size: 1rem;
@@ -150,10 +209,6 @@ body {
   .grid-cols-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-.font-mono {
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
 }
 
 @media (max-width: 768px) {
@@ -204,7 +259,6 @@ body {
     @apply flex-wrap justify-center;
   }
 }
-
 
 @media (max-width: 480px) {
   .filter-group {

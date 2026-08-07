@@ -195,7 +195,7 @@ export default function StockTab() {
 // ─── FINALIZADAS ──────────────────────────────────────────────────────────────
 
 function StockFinalizadas({ data, loading, error }) {
-  const { filters, setFilters, applyFilters } = useFilters({
+  const { filters, setFilters, applyFilters, resetFilters } = useFilters({
     departamento: "Todos", localidad: "Todos", barrio: "Todos",
     estado: "Todos", escribano: "", dni: "",
   });
@@ -235,7 +235,7 @@ function StockFinalizadas({ data, loading, error }) {
 
   return (
     <>
-      <SelectFilters data={finalizadas} filters={filters} setFilters={setFilters} />
+      <SelectFilters data={finalizadas} filters={filters} setFilters={setFilters} resetFilters={resetFilters} />
 
       <div className="overflow-x-auto rounded-xl border border-slate-200">
         <table className="w-full text-sm">
@@ -348,7 +348,7 @@ function StockFinalizadas({ data, loading, error }) {
 // ─── EN TRÁMITE ───────────────────────────────────────────────────────────────
 
 function StockTramite({ data, loading, error }) {
-  const { filters, setFilters, applyFilters } = useFilters({
+  const { filters, setFilters, applyFilters, resetFilters } = useFilters({
     departamento: "Todos", localidad: "Todos", barrio: "Todos",
     estado: "Todos", escribano: "", dni: "",
   });
@@ -401,7 +401,7 @@ function StockTramite({ data, loading, error }) {
 
   return (
     <>
-      <SelectFilters data={tramite} filters={filters} setFilters={setFilters} />
+      <SelectFilters data={tramite} filters={filters} setFilters={setFilters} resetFilters={resetFilters} />
 
       <div className="overflow-x-auto rounded-xl border border-slate-200">
         <table className="w-full text-sm">

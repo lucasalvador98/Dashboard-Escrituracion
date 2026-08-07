@@ -39,7 +39,7 @@ function formatMoney(val) {
 
 export default function MontosTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
-  const { filters, setFilters, applyFilters } = useFilters({
+  const { filters, setFilters, applyFilters, resetFilters } = useFilters({
     departamento: "Todos", localidad: "Todos", barrio: "Todos",
     estado: "Todos", escribano: "", dni: ""
   });
@@ -87,7 +87,7 @@ export default function MontosTab() {
 
   return (
     <>
-      <SelectFilters data={rawData} filters={filters} setFilters={setFilters} />
+      <SelectFilters data={rawData} filters={filters} setFilters={setFilters} resetFilters={resetFilters} />
 
       {loading && (
         <div className="flex justify-center py-16">

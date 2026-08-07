@@ -6,15 +6,21 @@ import React from "react";
  *  - data: array de registros (processedData)
  *  - filters: objeto de filtros { departamento, localidad, barrio, estado, escribano, dni }
  *  - setFilters: función para actualizar filtros (recibe parcial)
+ *  - resetFilters: función para volver los filtros al estado inicial (opcional)
  *
  * Comportamiento: selects no editables, dependientes en cascada.
  */
-export default function SelectFilters({ data = [], filters = {}, setFilters }) {
+export default function SelectFilters({ data = [], filters = {}, setFilters, resetFilters }) {
   const normalize = v => (v == null || v === "" ? "Todos" : v);
 
   const unique = (arr) => Array.from(new Set(arr.filter(Boolean))).sort();
 
   const getEscribano = i => i["Escribano Designado"] ?? i.Escribano ?? i.escribano ?? "";
+
+  const hasActive = Object.keys(filters).some(k => {
+    const v = filters[k];
+    return v != null && v !== "" && normalize(v) !== "Todos";
+  });
 
   const departamentos = ["Todos", ...unique(data.map(i => i.Departamento))];
   const localidadesAll = unique(data.map(i => i.Localidad));
@@ -125,6 +131,17 @@ export default function SelectFilters({ data = [], filters = {}, setFilters }) {
             placeholder="Buscar por DNI..."
           />
         </div>
+
+        {resetFilters && (
+          <button
+            className="h-10 px-3 text-xs font-semibold rounded-lg border transition-colors self-end disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:bg-red-50 enabled:hover:text-red-700 enabled:hover:border-red-200 text-slate-500 border-slate-200 bg-white"
+            onClick={() => resetFilters()}
+            disabled={!hasActive}
+            title="Restablecer todos los filtros"
+          >
+            Limpiar filtros
+          </button>
+        )}
       </div>
     </div>
   );

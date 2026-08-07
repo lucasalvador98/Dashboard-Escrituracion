@@ -19,6 +19,20 @@ function getNombre(item) {
   return multiField(item, "Beneficiarios", "Beneficiario", "APELLIDO Y NOMBRE", "ApellidoYNombre", "Nombre") || "—";
 }
 
+// Color de badge según estado
+function estadoClass(estado) {
+  switch (estado) {
+    case "En Trámite": return "bg-blue-100 text-blue-700";
+    case "Finalizada sin Entregar": return "bg-indigo-100 text-indigo-700";
+    case "Entregada": return "bg-green-100 text-green-700";
+    case "De Baja": return "bg-red-100 text-red-700";
+    case "Hipotecada": return "bg-orange-100 text-orange-700";
+    case "No Retiradas": return "bg-slate-200 text-slate-600";
+    case "Definitivo retirado": return "bg-teal-100 text-teal-700";
+    default: return "bg-slate-100 text-slate-600";
+  }
+}
+
 export default function EscribanosTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
   const [search, setSearch] = useState("");
@@ -27,6 +41,16 @@ export default function EscribanosTab() {
 
   const allData = useMemo(() => Array.isArray(data) ? data : [], [data]);
 
+  // Estados únicos presentes en los datos (dinámicos, no hardcodeados)
+  const estadosUnicos = useMemo(() => {
+    const set = new Set();
+    allData.forEach(item => {
+      const estado = (item.Estado || item.estado || item.EstadoProceso || "").toString().trim();
+      if (estado) set.add(estado);
+    });
+    return [...set].sort();
+  }, [allData]);
+
   const escribanos = useMemo(() => {
     const map = {};
     allData.forEach(item => {
@@ -34,17 +58,14 @@ export default function EscribanosTab() {
       if (!nombre || nombre === "N/A") return;
 
       if (!map[nombre]) {
-        map[nombre] = { nombre, total: 0, enTramite: 0, finalizada: 0, entregada: 0, deBaja: 0, registros: [] };
+        map[nombre] = { nombre, total: 0, estadoCounts: {}, registros: [] };
       }
       const e = map[nombre];
       e.total++;
       e.registros.push(item);
 
       const estado = (item.Estado || item.estado || item.EstadoProceso || "").toString().trim();
-      if (estado === "En Trámite") e.enTramite++;
-      else if (estado === "Finalizada sin Entregar") e.finalizada++;
-      else if (estado === "Entregada") e.entregada++;
-      else if (estado === "De Baja") e.deBaja++;
+      if (estado) e.estadoCounts[estado] = (e.estadoCounts[estado] || 0) + 1;
     });
 
     return Object.values(map).sort((a, b) => b.total - a.total);
@@ -125,38 +146,35 @@ export default function EscribanosTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b-2 border-slate-200">
-                  <th className="px-3 py-2 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Escribano</th>
-                  <th className="px-3 py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Total</th>
-                  <th className="px-3 py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">En Trámite</th>
-                  <th className="px-3 py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Finalizada</th>
-                  <th className="px-3 py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Entregada</th>
-                  <th className="px-3 py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">De Baja</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.map((e, idx) => (
-                  <tr
-                    key={idx}
-                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
-                    onClick={() => setSelectedEscribano(e)}
-                  >
-                    <td className="px-3 py-2 font-semibold text-slate-800">{e.nombre}</td>
-                    <td className="px-3 py-2 text-center font-bold text-slate-900">{e.total}</td>
-                    <td className="px-3 py-2 text-center">
-                      {e.enTramite > 0 ? <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">{e.enTramite}</span> : <span className="text-slate-300">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {e.finalizada > 0 ? <span className="inline-block px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold">{e.finalizada}</span> : <span className="text-slate-300">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {e.entregada > 0 ? <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-bold">{e.entregada}</span> : <span className="text-slate-300">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {e.deBaja > 0 ? <span className="inline-block px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">{e.deBaja}</span> : <span className="text-slate-300">—</span>}
-                    </td>
-                  </tr>
+                <th className="px-3 py-2 text-left text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Escribano</th>
+                <th className="px-3 py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Total</th>
+                {estadosUnicos.map(est => (
+                  <th key={est} className="px-3 py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">{est}</th>
                 ))}
-              </tbody>
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.map((e, idx) => (
+                <tr
+                  key={idx}
+                  className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
+                  onClick={() => setSelectedEscribano(e)}
+                >
+                  <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap">{e.nombre}</td>
+                  <td className="px-3 py-2 text-center font-bold text-slate-900">{e.total}</td>
+                  {estadosUnicos.map(est => {
+                    const count = e.estadoCounts[est] || 0;
+                    return (
+                      <td key={est} className="px-3 py-2 text-center">
+                        {count > 0 ? (
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${estadoClass(est)}`}>{count}</span>
+                        ) : <span className="text-slate-300">—</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
             </table>
           </div>
           {renderPagination()}
@@ -177,18 +195,16 @@ export default function EscribanosTab() {
                 <div className="text-2xl font-black text-slate-900">{selectedEscribano.total}</div>
                 <div className="text-xs font-medium text-slate-500">Total</div>
               </div>
-              <div className="bg-blue-50 rounded-xl p-3 text-center">
-                <div className="text-2xl font-black text-blue-700">{selectedEscribano.enTramite}</div>
-                <div className="text-xs font-medium text-slate-500">En Trámite</div>
-              </div>
-              <div className="bg-indigo-50 rounded-xl p-3 text-center">
-                <div className="text-2xl font-black text-indigo-700">{selectedEscribano.finalizada}</div>
-                <div className="text-xs font-medium text-slate-500">Finalizada</div>
-              </div>
-              <div className="bg-green-50 rounded-xl p-3 text-center">
-                <div className="text-2xl font-black text-green-700">{selectedEscribano.entregada}</div>
-                <div className="text-xs font-medium text-slate-500">Entregada</div>
-              </div>
+              {estadosUnicos.map(est => {
+                const count = selectedEscribano.estadoCounts[est] || 0;
+                if (!count) return null;
+                return (
+                  <div key={est} className="bg-slate-50 rounded-xl p-3 text-center">
+                    <div className="text-2xl font-black text-slate-700">{count}</div>
+                    <div className="text-xs font-medium text-slate-500">{est}</div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Tabla de registros */}
@@ -214,13 +230,8 @@ export default function EscribanosTab() {
                       <td className="px-2 py-1 font-mono">{item.DNI || "—"}</td>
                       <td className="px-2 py-1">{item.Barrio || "—"}</td>
                       <td className="px-2 py-1">
-                        <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          item.Estado === "Entregada" ? "bg-green-100 text-green-700"
-                          : item.Estado === "Finalizada sin Entregar" ? "bg-indigo-100 text-indigo-700"
-                          : item.Estado === "De Baja" ? "bg-red-100 text-red-700"
-                          : "bg-blue-100 text-blue-700"
-                        }`}>
-                          {item.Estado || "—"}
+                        <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold ${estadoClass(item.Estado || item.estado || item.EstadoProceso || "")}`}>
+                          {item.Estado || item.estado || item.EstadoProceso || "—"}
                         </span>
                       </td>
                     </tr>

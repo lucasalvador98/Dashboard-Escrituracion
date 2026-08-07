@@ -1,16 +1,34 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { INTERVALS } from "../hooks/useEscrituracion";
 import { diffClass } from "../hooks/useEscrituracion";
+import ColumnToggle from "./ColumnToggle";
 
 export default function MatrixTable({
   allColumns, visibleCols, sortCol, sortOrder, handleSort,
   paginatedData, safePage, itemsPerPage, filterByField,
-  setIntervalDetail, filters,
+  setIntervalDetail, filters, allGroups, toggleColumn,
+  showColToggle, setShowColToggle,
 }) {
   const sortIcon = col => (sortCol !== col ? "" : sortOrder === "asc" ? " ▲" : " ▼");
   const ariaSort = col => {
     if (sortCol !== col) return "none";
     return sortOrder === "asc" ? "ascending" : "descending";
+  };
+
+  // Posición del dropdown de columnas (fixed para no recortarse por overflow-x)
+  const dotsRef = useRef(null);
+  const [dotsPos, setDotsPos] = useState(null);
+
+  const toggleDots = () => {
+    if (showColToggle) {
+      setShowColToggle(false);
+      return;
+    }
+    const rect = dotsRef.current?.getBoundingClientRect();
+    if (rect) {
+      setDotsPos({ top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) });
+    }
+    setShowColToggle(true);
   };
 
   const th = (label, field) => (
@@ -53,6 +71,20 @@ export default function MatrixTable({
                   })()
                 : th(c.label, c.key)
             )}
+            <th className="col-dots-th" ref={dotsRef}>
+              <button
+                className={`col-dots-btn ${showColToggle ? "active" : ""}`}
+                onClick={toggleDots}
+                title="Mostrar/ocultar columnas"
+                aria-label="Configurar columnas"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="5" cy="12" r="2"/>
+                  <circle cx="12" cy="12" r="2"/>
+                  <circle cx="19" cy="12" r="2"/>
+                </svg>
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -122,13 +154,15 @@ export default function MatrixTable({
                     </td>
                   );
                 })}
+                {/* Celda espejo del botón de tres puntos para mantener la alineación */}
+                <td className="col-dots-cell" />
               </tr>
             );
           })}
 
           {paginatedData.length === 0 && (
             <tr>
-              <td colSpan={1 + visibleColumns.length} className="text-center py-12">
+              <td colSpan={2 + visibleColumns.length} className="text-center py-12">
                 <div className="flex flex-col items-center gap-2">
                   <span className="text-2xl">🔍</span>
                   <span className="text-slate-400 font-medium">No hay registros</span>
@@ -153,6 +187,22 @@ export default function MatrixTable({
           )}
         </tbody>
       </table>
+
+      {/* Dropdown de columnas posicionado fixed para evitar recortes */}
+      {showColToggle && dotsPos && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowColToggle(false)} />
+          <div style={{ position: "fixed", top: dotsPos.top, right: dotsPos.right, zIndex: 50 }}>
+            <ColumnToggle
+              columns={allColumns}
+              groups={allGroups}
+              visibleCols={visibleCols}
+              onToggle={toggleColumn}
+              onClose={() => setShowColToggle(false)}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
