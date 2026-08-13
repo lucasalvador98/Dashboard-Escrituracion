@@ -29,6 +29,9 @@ function getEscribano(item) {
   return item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";
 }
 
+// Plazo esperado Acep→Firma (días hábiles), según cronología oficial
+const ESCROW_ESPERADO = 20;
+
 function diffClass(val, esperado) {
   if (val === "N/A" || val === "" || val == null) return "gray";
   const n = Number(val);
@@ -38,13 +41,10 @@ function diffClass(val, esperado) {
   return "red";
 }
 
-// Severidad de un caso demorado según días totales (esperado: 20d)
+// Severidad de un caso demorado — misma regla que el semáforo de la matriz
+// (verde ≤ esperado, amarillo ≤ esperado×1.3, rojo por encima)
 function severidadDias(dias) {
-  const n = Number(dias);
-  if (isNaN(n)) return "gray";
-  if (n <= 25) return "green";
-  if (n <= 30) return "yellow";
-  return "red";
+  return diffClass(dias, ESCROW_ESPERADO);
 }
 
 const SEVERIDAD_STYLE = {
@@ -318,7 +318,6 @@ export default function DashboardTab() {
   // ── Demorados (Acep→Firma > 20d) ──
   const demorados = useMemo(() => {
     if (!filteredData.length) return [];
-    const ESCROW_ESPERADO = 20;
     const byEscribano = {};
 
     filteredData.forEach(item => {
