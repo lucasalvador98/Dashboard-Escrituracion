@@ -1,23 +1,15 @@
 import React from "react";
+import { INTERVALS, diffClass } from "../lib/deadlines";
 
-// Stages configuration - derived from INTERVALS logic
+// Stages configuration - derived from the shared INTERVALS
 const STAGES = [
-  { label: "Ingreso Colegio", field: "Fecha Ingreso Colegio de Escribanos" },
-  { label: "Sorteo", field: "Fecha de Sorteo" },
-  { label: "Aceptación", field: "Fecha de Aceptacion" },
-  { label: "Firma", field: "Fecha de Firma" },
-  { label: "Ingreso Registro", field: "Fecha de Ingreso al Registro" },
-  { label: "Testimonio", field: "Fecha de envío PT digital" },
+  { label: "Ingreso Colegio", field: INTERVALS[0].fecha1 },
+  { label: "Sorteo", field: INTERVALS[0].fecha2 },
+  { label: "Aceptación", field: INTERVALS[1].fecha2 },
+  { label: "Firma", field: INTERVALS[2].fecha2 },
+  { label: "Ingreso Registro", field: INTERVALS[3].fecha2 },
+  { label: "Testimonio", field: INTERVALS[4].fecha2 },
 ];
-
-function diffClass(val, esperado) {
-  if (val === "N/A" || val === "" || val == null) return "gray";
-  const n = Number(val);
-  if (isNaN(n)) return "gray";
-  if (n <= esperado) return "green";
-  if (n <= Math.ceil(esperado * 1.3)) return "yellow";
-  return "red";
-}
 
 export default function TimelineBar({ stages = STAGES, intervals = [], item, highlightedInterval }) {
   if (!item) return null;

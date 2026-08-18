@@ -1,12 +1,9 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
+import { INTERVALS, generarReporte, diffClass } from "../lib/deadlines";
 
-export const INTERVALS = [
-  { key: "diferencia_ingreso_sorteo", label: "Ing→Sort", fullLabel: "Ingreso Colegio → Sorteo", fecha1: "Fecha Ingreso Colegio de Escribanos", fecha2: "Fecha de Sorteo", esperado: 10 },
-  { key: "diferencia_sorteo_aceptacion", label: "Sort→Acep", fullLabel: "Sorteo → Aceptación", fecha1: "Fecha de Sorteo", fecha2: "Fecha de Aceptacion", esperado: 5 },
-  { key: "diferencia_aceptacion_firma", label: "Acep→Firma", fullLabel: "Aceptación → Firma", fecha1: "Fecha de Aceptacion", fecha2: "Fecha de Firma", esperado: 20 },
-  { key: "diferencia_firma_ingreso", label: "Firma→IngD", fullLabel: "Firma → Ingreso Diario", fecha1: "Fecha de Firma", fecha2: "Fecha de Ingreso al Registro", esperado: 5 },
-  { key: "diferencia_ingreso_testimonio", label: "IngD→Test", fullLabel: "Ingreso Diario → Testimonio", fecha1: "Fecha de Ingreso al Registro", fecha2: "Fecha de envío PT digital", esperado: 15 },
-];
+// Re-exported so existing consumers (MatrixTable, DateDetailPanel) keep
+// working during migration; the definitions live in src/lib/deadlines.js.
+export { INTERVALS, diffClass };
 
 export const INTERVAL_KEYS = INTERVALS.map(i => i.key);
 
@@ -56,52 +53,6 @@ export function labelize(key) {
     .replace(/Tel\b/g, "Tel.")
     .replace(/Cot\b/g, "Cot.")
     .replace(/Ing d/g, "Ing D");
-}
-
-function contarDiasHabiles(inicio, fin) {
-  let count = 0;
-  const current = new Date(inicio);
-  current.setDate(current.getDate() + 1);
-  while (current <= fin) {
-    const d = current.getDay();
-    if (d !== 0 && d !== 6) count++;
-    current.setDate(current.getDate() + 1);
-  }
-  return count;
-}
-
-function calcularDiferenciaDias(fecha1, fecha2) {
-  if (!fecha1 || !fecha2 || fecha1 === "N/A" || fecha2 === "N/A") return "N/A";
-  const parse = f => {
-    if (!f) return NaN;
-    if (f.includes("/")) return new Date(f.split("/").reverse().join("-"));
-    return new Date(f);
-  };
-  const date1 = parse(fecha1);
-  const date2 = parse(fecha2);
-  if (isNaN(date1) || isNaN(date2)) return "N/A";
-  return contarDiasHabiles(date1, date2);
-}
-
-function generarReporte(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr.map(orig => {
-    const item = { ...orig };
-    INTERVALS.forEach(({ fecha1, fecha2, key }) => {
-      item[key] = calcularDiferenciaDias(item[fecha1], item[fecha2]);
-    });
-    return item;
-  });
-}
-
-export function diffClass(val, esperado, forceRedAbove) {
-  if (val === "N/A" || val === "" || val == null) return "gray";
-  const n = Number(val);
-  if (isNaN(n)) return "gray";
-  const redThreshold = forceRedAbove != null ? forceRedAbove : Math.ceil(esperado * 1.3);
-  if (n <= esperado) return "green";
-  if (n <= redThreshold) return "yellow";
-  return "red";
 }
 
 const itemsPerPage = 15;
