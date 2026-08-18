@@ -3,6 +3,15 @@
  * Correr con: npm test
  */
 
+import {
+  INTERVALS,
+  parseDate,
+  contarDiasHabiles,
+  calcularDiferenciaDias,
+  generarReporte,
+  diffClass,
+} from "../lib/deadlines";
+
 // --- parseMonto (copy from MontosTab) ---
 function parseMonto(m) {
   if (m == null) return 0;
@@ -55,39 +64,176 @@ describe("parseMonto", () => {
   });
 });
 
-// --- diffClass (copy from Escrituracion) ---
-function diffClass(val, esperado) {
-  if (val === "N/A" || val === "" || val == null) return "gray";
-  const n = Number(val);
-  if (isNaN(n)) return "gray";
-  const amarillo = Math.ceil(esperado * 1.3);
-  if (n <= esperado) return "green";
-  if (n <= amarillo) return "yellow";
-  return "red";
-}
-
-describe("diffClass (semáforo)", () => {
-  test("valores inválidos son gray", () => {
+// --- diffClass (shared semaphore, from deadlines lib) ---
+describe("diffClass (shared semaphore)", () => {
+  test("invalid values are gray", () => {
     expect(diffClass("N/A", 10)).toBe("gray");
     expect(diffClass(null, 10)).toBe("gray");
+    expect(diffClass(undefined, 10)).toBe("gray");
     expect(diffClass("", 10)).toBe("gray");
+    expect(diffClass("abc", 10)).toBe("gray");
   });
 
-  test("dentro del plazo es green", () => {
+  test("within expected is green (inclusive)", () => {
+    expect(diffClass(0, 10)).toBe("green");
     expect(diffClass(5, 10)).toBe("green");
     expect(diffClass(10, 10)).toBe("green");
-    expect(diffClass(0, 10)).toBe("green");
   });
 
-  test("hasta 30% sobre plazo es yellow", () => {
+  test("up to 130% of expected (ceiled) is yellow", () => {
     // esperado=10 → amarillo hasta ceil(13)=13
     expect(diffClass(11, 10)).toBe("yellow");
     expect(diffClass(13, 10)).toBe("yellow");
+    // esperado=20 → amarillo hasta ceil(26)=26 (Acep→Firma 21–26d es amarillo, no rojo)
+    expect(diffClass(21, 20)).toBe("yellow");
+    expect(diffClass(26, 20)).toBe("yellow");
   });
 
-  test("más de 30% sobre plazo es red", () => {
+  test("beyond 130% is red", () => {
     expect(diffClass(14, 10)).toBe("red");
-    expect(diffClass(20, 10)).toBe("red");
+    expect(diffClass(27, 20)).toBe("red");
+    expect(diffClass(8, 5)).toBe("red"); // ceil(6.5)=7
+    expect(diffClass(21, 15)).toBe("red"); // ceil(19.5)=20
+  });
+
+  test("yellow boundary for expected=5 and expected=15", () => {
+    expect(diffClass(6, 5)).toBe("yellow");
+    expect(diffClass(7, 5)).toBe("yellow");
+    expect(diffClass(16, 15)).toBe("yellow");
+    expect(diffClass(20, 15)).toBe("yellow");
+  });
+});
+
+// --- parseDate (deadlines lib) ---
+describe("parseDate (deadlines lib)", () => {
+  test("dd/mm/yyyy parses to local date", () => {
+    const d = parseDate("15/06/2024");
+    expect(d).toBeInstanceOf(Date);
+    expect(d.getFullYear()).toBe(2024);
+    expect(d.getMonth()).toBe(5); // June
+    expect(d.getDate()).toBe(15);
+  });
+
+  test("ISO yyyy-mm-dd parses to local date", () => {
+    const d = parseDate("2024-06-15");
+    expect(d.getFullYear()).toBe(2024);
+    expect(d.getMonth()).toBe(5);
+    expect(d.getDate()).toBe(15);
+  });
+
+  test("invalid or missing input returns null", () => {
+    expect(parseDate("")).toBeNull();
+    expect(parseDate(null)).toBeNull();
+    expect(parseDate(undefined)).toBeNull();
+    expect(parseDate("N/A")).toBeNull();
+    expect(parseDate("garbage")).toBeNull();
+    expect(parseDate("31/02/2024")).toBeNull(); // invalid day of month
+  });
+});
+
+// --- contarDiasHabiles (deadlines lib) ---
+describe("contarDiasHabiles", () => {
+  test("counts weekdays between dates, start-exclusive and end-inclusive", () => {
+    // Mon 10 Jun 2024 → Fri 14 Jun 2024: Tue, Wed, Thu, Fri = 4
+    expect(contarDiasHabiles(parseDate("10/06/2024"), parseDate("14/06/2024"))).toBe(4);
+  });
+
+  test("excludes weekends", () => {
+    // Mon 10 Jun → Mon 17 Jun: Tue–Fri (4) + Mon 17 (1) = 5
+    expect(contarDiasHabiles(parseDate("10/06/2024"), parseDate("17/06/2024"))).toBe(5);
+  });
+
+  test("same day returns 0", () => {
+    expect(contarDiasHabiles(parseDate("10/06/2024"), parseDate("10/06/2024"))).toBe(0);
+  });
+
+  test("weekend start counts from the next weekday", () => {
+    // Sat 15 Jun → Sun 23 Jun: Mon–Fri 17–21 = 5
+    expect(contarDiasHabiles(parseDate("15/06/2024"), parseDate("23/06/2024"))).toBe(5);
+  });
+
+  test("end on a weekend still counts only weekdays", () => {
+    // Mon 10 Jun → Sat 15 Jun: Tue–Fri = 4
+    expect(contarDiasHabiles(parseDate("10/06/2024"), parseDate("15/06/2024"))).toBe(4);
+  });
+
+  test("accepts Date objects directly", () => {
+    expect(contarDiasHabiles(new Date(2024, 5, 10), new Date(2024, 5, 14))).toBe(4);
+  });
+});
+
+// --- calcularDiferenciaDias (deadlines lib) ---
+describe("calcularDiferenciaDias", () => {
+  test("returns business days for a valid dd/mm/yyyy pair", () => {
+    expect(calcularDiferenciaDias("10/06/2024", "14/06/2024")).toBe(4);
+  });
+
+  test("accepts ISO dates", () => {
+    expect(calcularDiferenciaDias("2024-06-10", "2024-06-14")).toBe(4);
+  });
+
+  test("returns N/A when a date is missing or invalid", () => {
+    expect(calcularDiferenciaDias(null, "14/06/2024")).toBe("N/A");
+    expect(calcularDiferenciaDias("10/06/2024", "N/A")).toBe("N/A");
+    expect(calcularDiferenciaDias("basura", "14/06/2024")).toBe("N/A");
+    expect(calcularDiferenciaDias("", "")).toBe("N/A");
+  });
+});
+
+// --- INTERVALS (deadlines lib) ---
+describe("INTERVALS (deadlines lib)", () => {
+  test("defines the five shared intervals with exact expected business days", () => {
+    expect(INTERVALS).toHaveLength(5);
+    const byKey = Object.fromEntries(INTERVALS.map(iv => [iv.key, iv.esperado]));
+    expect(byKey).toEqual({
+      diferencia_ingreso_sorteo: 10,
+      diferencia_sorteo_aceptacion: 5,
+      diferencia_aceptacion_firma: 20,
+      diferencia_firma_ingreso: 5,
+      diferencia_ingreso_testimonio: 15,
+    });
+  });
+
+  test("intervals reference the six milestone date columns exactly once", () => {
+    const fields = INTERVALS.flatMap(iv => [iv.fecha1, iv.fecha2]);
+    expect(new Set(fields)).toEqual(
+      new Set([
+        "Fecha Ingreso Colegio de Escribanos",
+        "Fecha de Sorteo",
+        "Fecha de Aceptacion",
+        "Fecha de Firma",
+        "Fecha de Ingreso al Registro",
+        "Fecha de envío PT digital",
+      ])
+    );
+  });
+});
+
+// --- generarReporte (deadlines lib) ---
+describe("generarReporte", () => {
+  test("enriches rows with difference_* business-day fields", () => {
+    const rows = [
+      {
+        Beneficiarios: "Ana",
+        "Fecha Ingreso Colegio de Escribanos": "10/06/2024",
+        "Fecha de Sorteo": "14/06/2024",
+      },
+    ];
+    const out = generarReporte(rows);
+    expect(out[0].diferencia_ingreso_sorteo).toBe(4);
+    expect(out[0].Beneficiarios).toBe("Ana");
+  });
+
+  test("missing dates yield N/A and original rows are not mutated", () => {
+    const rows = [{ Beneficiarios: "Ana" }];
+    const out = generarReporte(rows);
+    expect(out[0].diferencia_ingreso_sorteo).toBe("N/A");
+    expect(rows[0]).toEqual({ Beneficiarios: "Ana" });
+  });
+
+  test("non-array input returns an empty array", () => {
+    expect(generarReporte(null)).toEqual([]);
+    expect(generarReporte(undefined)).toEqual([]);
   });
 });
 
