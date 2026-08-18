@@ -102,8 +102,7 @@ export default function MatrixTable({
                     const iv = INTERVALS.find(i => i.key === c.key);
                     if (!iv) return null;
                     const val = item[iv.key];
-                    const forceRed = iv.key === "diferencia_aceptacion_firma" ? 20 : undefined;
-                    const cls = diffClass(val, iv.esperado, forceRed);
+                    const cls = diffClass(val, iv.esperado);
                     const fechas = item[iv.fecha1] && item[iv.fecha2]
                       ? `${item[iv.fecha1]} → ${item[iv.fecha2]}`
                       : "Fechas no disponibles";
