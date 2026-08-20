@@ -1,12 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import Sidebar from "./components/Sidebar";
-import RefreshBar from "./components/RefreshBar";
+import AppLayout from "./AppLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardTab from "./DashboardTab";
 import Escrituracion from "./Escrituracion";
 import StockTab from "./StockTab";
-import MontosTab from "./MontosTab";
 import EscribanosTab from "./EscribanosTab";
 
 const queryClient = new QueryClient({
@@ -18,46 +17,55 @@ const queryClient = new QueryClient({
   },
 });
 
-function AppContent() {
-  const [activeTab, setActiveTab] = useState(0); // 0: Dashboard, 1: Escrituracion, 2: Stock, 3: Escribanos
-  const tabs = [
-    <ErrorBoundary key="dashboard" name="Dashboard"><DashboardTab /></ErrorBoundary>,
-    <ErrorBoundary key="escrituracion" name="Escrituración"><Escrituracion /></ErrorBoundary>,
-    <ErrorBoundary key="stock" name="Stock"><StockTab /></ErrorBoundary>,
-    <ErrorBoundary key="escribanos" name="Escribanos"><EscribanosTab /></ErrorBoundary>,
-  ];
-
+// Route table, kept separate from the router so tests can mount it under MemoryRouter.
+export function AppRoutes() {
   return (
-    <div className="app-root">
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        itemsCount={4}
-      />
-
-      <div className="app-content">
-        <header className="app-header flex items-center justify-between">
-          <RefreshBar />
-        </header>
-        <main className="app-main">
-          {tabs[activeTab]}
-        </main>
-
-        <footer className="app-footer" role="contentinfo">
-          <div className="text-center space-y-1">
-            <div className="font-medium">Elaborado por Dirección de Tecnología</div>
-            <div className="text-xs text-gray-500">Ministerio de Desarrollo Social y Promoción del Empleo</div>
-          </div>
-        </footer>
-      </div>
-    </div>
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route
+          path="/dashboard"
+          element={
+            <ErrorBoundary key="dashboard" name="Dashboard">
+              <DashboardTab />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/escrituracion"
+          element={
+            <ErrorBoundary key="escrituracion" name="Escrituración">
+              <Escrituracion />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/stock"
+          element={
+            <ErrorBoundary key="stock" name="Stock">
+              <StockTab />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/escribanos"
+          element={
+            <ErrorBoundary key="escribanos" name="Escribanos">
+              <EscribanosTab />
+            </ErrorBoundary>
+          }
+        />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Route>
+    </Routes>
   );
 }
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
