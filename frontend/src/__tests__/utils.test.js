@@ -12,7 +12,7 @@ import {
   diffClass,
 } from "../lib/deadlines";
 
-// --- parseMonto (copy from MontosTab) ---
+// --- parseMonto (legacy copy, source tab removed) ---
 function parseMonto(m) {
   if (m == null) return 0;
   if (typeof m === "number") return m;
