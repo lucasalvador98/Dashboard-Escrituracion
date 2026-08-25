@@ -1,12 +1,40 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
-import SelectFilters from "./components/SelectFilters";
-import SlidePanel from "./components/SlidePanel";
 import API_CONFIG from "./config-api";
 
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
-const DETALLE_PER_PAGE = 10;
+
+const ESTADO_FORMATO = {
+  "Finalizada sin Entregar": "finalizadas",
+  Entregada: "finalizadas",
+  "En Trámite": "en-tramite",
+};
+
+const ACCORDION_COLUMNS = [
+  { key: "nro", label: "N°", sortable: false },
+  { key: "barrio", label: "Barrio", sortable: true },
+  { key: "mza", label: "Mza", sortable: true },
+  { key: "lote", label: "Lote", sortable: true },
+  { key: "nombre", label: "Beneficiario", sortable: true },
+  { key: "dni", label: "DNI", sortable: true },
+  { key: "tel", label: "Teléfono", sortable: false },
+  { key: "cotitular", label: "Cotitular", sortable: true },
+  { key: "escribano", label: "Escribano", sortable: true },
+];
+
+function extractFields(item) {
+  return {
+    nombre: item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre ?? "—",
+    dni: item.DNI ?? item.dni ?? item.documento ?? "—",
+    mza: item["Mza. Plano"] ?? item["Mza. Oficial"] ?? item.Mza ?? item.MZA ?? item.mza ?? "—",
+    lote: item["Lote Plano"] ?? item["Lote oficial"] ?? item["Lote Oficial"] ?? item.Lote ?? item.LOTE ?? "—",
+    cotitular: item["COTITULAR Nombre y Apellido"] ?? item["COTITULAR - Nombre y Apellido"] ?? item.Cotitular ?? "—",
+    tel: item.Telefono ?? item.telefono ?? "—",
+    barrio: item.Barrio ?? "—",
+    escribano: item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "—",
+  };
+}
 
 function downloadExcel(url, filename) {
   const a = document.createElement("a");
@@ -17,50 +45,121 @@ function downloadExcel(url, filename) {
   document.body.removeChild(a);
 }
 
-// ─── Tabla de detalle paginada (reutilizable) ─────────────────────────────────
+function buildExportUrl(formato, filters) {
+  const params = new URLSearchParams({ formato });
+  if (filters.departamento && filters.departamento !== "Todos") params.set("departamento", filters.departamento);
+  if (filters.localidad && filters.localidad !== "Todos") params.set("localidad", filters.localidad);
+  if (filters.barrio && filters.barrio !== "Todos") params.set("barrio", filters.barrio);
+  return `${API_URL}/stock/planillas?${params.toString()}`;
+}
 
-function DetalleTable({ items, columns, renderCell }) {
+function SortIcon({ active, direction }) {
+  if (!active) return <span className="text-slate-300 ml-1">⇅</span>;
+  return <span className="text-blue-600 ml-1">{direction === "asc" ? "↑" : "↓"}</span>;
+}
+
+function AccordionTable({ items }) {
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(items.length / DETALLE_PER_PAGE));
-  const safePage = Math.min(Math.max(1, page), totalPages);
-  const paginated = items.slice((safePage - 1) * DETALLE_PER_PAGE, safePage * DETALLE_PER_PAGE);
+  const perPage = 15;
 
-  useEffect(() => setPage(1), [items]);
+  const filtered = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter(item => {
+      const f = extractFields(item);
+      return Object.values(f).some(v => String(v).toLowerCase().includes(q));
+    });
+  }, [items, search]);
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      const fa = extractFields(a);
+      const fb = extractFields(b);
+      const va = String(fa[sortKey] ?? "").toLowerCase();
+      const vb = String(fb[sortKey] ?? "").toLowerCase();
+      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / perPage));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginated = sorted.slice((safePage - 1) * perPage, safePage * perPage);
+
+  const handleSort = (key, sortable) => {
+    if (!sortable) return;
+    if (sortKey === key) {
+      setSortDir(d => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
 
   return (
-    <div>
+    <div className="space-y-2">
+      <input
+        type="text"
+        value={search}
+        onChange={e => { setSearch(e.target.value); setPage(1); }}
+        placeholder="Buscar beneficiario, DNI, barrio..."
+        className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+
       <div className="overflow-x-auto">
         <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
           <thead>
             <tr className="bg-slate-100">
-              {columns.map(col => (
-                <th key={col.key} className="px-2.5 py-2 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider border border-slate-200">
-                  {col.label}
+              {ACCORDION_COLUMNS.map(col => (
+                <th
+                  key={col.key}
+                  className={`px-2.5 py-2 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider border border-slate-200 ${col.sortable ? "cursor-pointer hover:bg-slate-200 select-none" : ""}`}
+                  onClick={() => handleSort(col.key, col.sortable)}
+                >
+                  <span className="inline-flex items-center">
+                    {col.label}
+                    {col.sortable && <SortIcon active={sortKey === col.key} direction={sortDir} />}
+                  </span>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {paginated.map((item, idx) => {
-              const globalIdx = (safePage - 1) * DETALLE_PER_PAGE + idx;
+              const f = extractFields(item);
+              const globalIdx = (safePage - 1) * perPage + idx;
               return (
                 <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  {columns.map(col => (
-                    <td key={col.key} className="px-2.5 py-2 border border-slate-200 text-slate-700">
-                      {renderCell(col.key, item, globalIdx)}
-                    </td>
-                  ))}
+                  <td className="px-2.5 py-2 border border-slate-200 text-slate-400 font-medium">{globalIdx + 1}</td>
+                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.barrio}</td>
+                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.mza}</td>
+                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.lote}</td>
+                  <td className="px-2.5 py-2 border border-slate-200 font-semibold text-slate-800">{f.nombre}</td>
+                  <td className="px-2.5 py-2 border border-slate-200 font-mono text-[11px]">{f.dni}</td>
+                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.tel}</td>
+                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.cotitular}</td>
+                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.escribano}</td>
                 </tr>
               );
             })}
+            {paginated.length === 0 && (
+              <tr>
+                <td colSpan={ACCORDION_COLUMNS.length} className="px-2.5 py-6 text-center text-slate-400 border border-slate-200">
+                  Sin resultados
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+        <div className="flex items-center justify-between pt-1">
           <span className="text-[11px] text-slate-400 font-medium">
-            {items.length} registros — Página {safePage} de {totalPages}
+            {sorted.length} registros — Página {safePage} de {totalPages}
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -72,22 +171,15 @@ function DetalleTable({ items, columns, renderCell }) {
             </button>
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (safePage <= 3) {
-                pageNum = i + 1;
-              } else if (safePage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = safePage - 2 + i;
-              }
+              if (totalPages <= 5) pageNum = i + 1;
+              else if (safePage <= 3) pageNum = i + 1;
+              else if (safePage >= totalPages - 2) pageNum = totalPages - 4 + i;
+              else pageNum = safePage - 2 + i;
               return (
                 <button
                   key={pageNum}
                   className={`w-7 h-7 text-xs font-medium rounded transition-colors ${
-                    safePage === pageNum
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-500 hover:bg-slate-100"
+                    safePage === pageNum ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-100"
                   }`}
                   onClick={() => setPage(pageNum)}
                 >
@@ -109,268 +201,162 @@ function DetalleTable({ items, columns, renderCell }) {
   );
 }
 
-// ─── Columnas de detalle compartidas ──────────────────────────────────────────
-
-const DETALLE_COLUMNS = [
-  { key: "nro", label: "N°" },
-  { key: "barrio", label: "Barrio" },
-  { key: "mza", label: "Mza" },
-  { key: "lote", label: "Lote" },
-  { key: "nombre", label: "Beneficiario" },
-  { key: "dni", label: "DNI" },
-  { key: "tel", label: "Teléfono" },
-  { key: "cotitular", label: "Cotitular" },
-  { key: "dniCot", label: "DNI Cot." },
-  { key: "telCot", label: "Tel. Cot." },
-  { key: "asistencia", label: "Asistencia" },
-  { key: "escribano", label: "Escribano" },
-];
-
-function extractDetalleFields(item) {
-  return {
-    nombre: item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? item.Nombre ?? item.nombre ?? "—",
-    dni: item.DNI ?? item.dni ?? item.documento ?? "—",
-    mza: item["Mza. Plano"] ?? item["Mza. Oficial"] ?? item.Mza ?? item.MZA ?? item.mza ?? "—",
-    lote: item["Lote Plano"] ?? item["Lote oficial"] ?? item["Lote Oficial"] ?? item.Lote ?? item.LOTE ?? "—",
-    cotitular: item["COTITULAR Nombre y Apellido"] ?? item["COTITULAR - Nombre y Apellido"] ?? item.Cotitular ?? "—",
-    dniCot: item["COTITULAR DNI"] ?? item["COTITULAR - DNI"] ?? item.CotitularDNI ?? "—",
-    telCot: item["COTITULAR Telefono"] ?? item["Tel. Cotitular"] ?? item.TelefonoCotitular ?? "—",
-    tel: item.Telefono ?? item.telefono ?? "—",
-    asistencia: item.Asistencia ?? item.ASISTENCIA ?? "—",
-    barrio: item.Barrio ?? "—",
-    escribano: item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "—",
-    contactoEscribano: item["Contacto Escribano"] ?? "",
-  };
-}
-
-function renderDetalleCell(key, item, idx) {
-  const f = extractDetalleFields(item);
-  if (key === "nro") return <span className="text-slate-400 font-medium">{idx + 1}</span>;
-  if (key === "nombre") return <span className="font-semibold text-slate-800">{f.nombre}</span>;
-  if (key === "dni") return <span className="font-mono text-[11px]">{f.dni}</span>;
-  return f[key] || "—";
-}
-
-
 export default function StockTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
   const { state: filters, set: setFilters, reset: resetFilters } = useUrlState({
     scope: "stock",
-    defaults: { departamento: "Todos", localidad: "Todos", barrio: "Todos", estado: "Todos", escribano: "", dni: "" },
-    sharedKeys: ["escribano", "estado"],
-    replaceKeys: ["dni"],
+    defaults: { departamento: "Todos", localidad: "Todos", barrio: "Todos" },
   });
 
-  const [formato, setFormato] = useState("finalizadas");
-  const [detalle, setDetalle] = useState(null);
-  const [expandedDeptos, setExpandedDeptos] = useState({});
-  const [expandedLocs, setExpandedLocs] = useState({});
+  const [expanded, setExpanded] = useState({});
 
   const allData = useMemo(() => (Array.isArray(data) ? data : []), [data]);
 
   const filtered = useMemo(() => {
     return allData.filter(item => {
-      if (filters.departamento && filters.departamento !== "Todos" && item.Departamento && !item.Departamento.toUpperCase().includes(filters.departamento.trim().toUpperCase())) return false;
-      if (filters.localidad && filters.localidad !== "Todos" && item.Localidad && !item.Localidad.toUpperCase().includes(filters.localidad.trim().toUpperCase())) return false;
-      if (filters.barrio && filters.barrio !== "Todos" && item.Barrio && !item.Barrio.toUpperCase().includes(filters.barrio.trim().toUpperCase())) return false;
-      if (filters.estado && filters.estado !== "Todos" && item.Estado && !item.Estado.toUpperCase().includes(filters.estado.trim().toUpperCase())) return false;
-      const itemDNI = item?.DNI ?? item?.dni ?? item?.documento ?? "";
-      if (filters.dni && (!itemDNI || !String(itemDNI).includes(filters.dni))) return false;
-      const itemEscribano = item?.["Escribano Designado"] ?? item?.Escribano ?? item?.escribano ?? "";
-      if (filters.escribano && (!itemEscribano || !itemEscribano.toUpperCase().includes(filters.escribano.trim().toUpperCase()))) return false;
+      if (filters.departamento && filters.departamento !== "Todos") {
+        const d = item.Departamento ?? "";
+        if (!d.toUpperCase().includes(filters.departamento.trim().toUpperCase())) return false;
+      }
+      if (filters.localidad && filters.localidad !== "Todos") {
+        const l = item.Localidad ?? "";
+        if (!l.toUpperCase().includes(filters.localidad.trim().toUpperCase())) return false;
+      }
+      if (filters.barrio && filters.barrio !== "Todos") {
+        const b = item.Barrio ?? "";
+        if (!b.toUpperCase().includes(filters.barrio.trim().toUpperCase())) return false;
+      }
       return true;
     });
   }, [allData, filters]);
 
-  const grouped = useMemo(() => {
-    const g = {};
-    filtered.forEach(item => {
-      const dept = item.Departamento || "Sin Departamento";
-      const loc = item.Localidad || "Sin Localidad";
-      const bar = item.Barrio || "Sin Barrio";
-      if (!g[dept]) g[dept] = {};
-      if (!g[dept][loc]) g[dept][loc] = {};
-      if (!g[dept][loc][bar]) g[dept][loc][bar] = [];
-      g[dept][loc][bar].push(item);
-    });
-    return g;
-  }, [filtered]);
-
-  const estadoCount = useMemo(() => {
-    const counts = {};
+  const estadoGroups = useMemo(() => {
+    const groups = {};
     filtered.forEach(item => {
       const est = (item.Estado || "").toString().trim() || "Sin estado";
-      counts[est] = (counts[est] || 0) + 1;
+      if (!groups[est]) groups[est] = [];
+      groups[est].push(item);
     });
-    return counts;
+    return groups;
   }, [filtered]);
 
-  const allEstados = useMemo(() => Object.keys(estadoCount).sort(), [estadoCount]);
+  const allEstados = useMemo(() => Object.keys(estadoGroups).sort(), [estadoGroups]);
 
-  function toggleDepto(d) { setExpandedDeptos(p => ({ ...p, [d]: !p[d] })); }
-  function toggleLoc(d, l) { setExpandedLocs(p => ({ ...p, [d + "|" + l]: !p[d + "|" + l] })); }
+  const toggleAccordion = useCallback((estado) => {
+    setExpanded(prev => ({ ...prev, [estado]: !prev[estado] }));
+  }, []);
 
-  function buildExportUrl() {
-    const params = new URLSearchParams({ formato });
-    if (filters.departamento && filters.departamento !== "Todos") params.set("departamento", filters.departamento);
-    if (filters.localidad && filters.localidad !== "Todos") params.set("localidad", filters.localidad);
-    if (filters.barrio && filters.barrio !== "Todos") params.set("barrio", filters.barrio);
-    return `${API_URL}/stock/planillas?${params.toString()}`;
-  }
+  const departamentos = useMemo(
+    () => ["Todos", ...Array.from(new Set(allData.map(i => i.Departamento).filter(Boolean))).sort()],
+    [allData]
+  );
 
-  if (loading) return <div className="flex justify-center py-8"><div className="spinner"></div></div>;
+  const localidades = useMemo(() => {
+    if (filters.departamento && filters.departamento !== "Todos") {
+      return ["Todos", ...Array.from(new Set(allData.filter(i => i.Departamento === filters.departamento).map(i => i.Localidad).filter(Boolean))).sort()];
+    }
+    return ["Todos", ...Array.from(new Set(allData.map(i => i.Localidad).filter(Boolean))).sort()];
+  }, [allData, filters.departamento]);
+
+  const barrios = useMemo(() => {
+    let pool = allData;
+    if (filters.departamento && filters.departamento !== "Todos") pool = pool.filter(i => i.Departamento === filters.departamento);
+    if (filters.localidad && filters.localidad !== "Todos") pool = pool.filter(i => i.Localidad === filters.localidad);
+    return ["Todos", ...Array.from(new Set(pool.map(i => i.Barrio).filter(Boolean))).sort()];
+  }, [allData, filters.departamento, filters.localidad]);
+
+  if (loading) return <div className="flex justify-center py-8"><div className="spinner" /></div>;
   if (error) return <div className="alert alert-error"><p>{error}</p></div>;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Stock</h2>
-        <div className="flex items-center gap-2">
+      <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Stock</h2>
+
+      <div className="flex gap-3 flex-wrap">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Departamento</label>
           <select
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={formato}
-            onChange={e => setFormato(e.target.value)}
+            value={filters.departamento}
+            onChange={e => setFilters({ departamento: e.target.value, localidad: "Todos", barrio: "Todos" })}
           >
-            <option value="finalizadas">Formato: Finalizadas</option>
-            <option value="en-tramite">Formato: En Trámite</option>
-            <option value="firma">Formato: Firma</option>
+            {departamentos.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
-          <button
-            onClick={() => downloadExcel(buildExportUrl(), `Stock_${formato}.xlsx`)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-all"
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Localidad</label>
+          <select
+            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={filters.localidad}
+            onChange={e => setFilters({ localidad: e.target.value, barrio: "Todos" })}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Exportar
+            {localidades.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Barrio</label>
+          <select
+            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={filters.barrio}
+            onChange={e => setFilters({ barrio: e.target.value })}
+          >
+            {barrios.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
+        <div className="flex items-end">
+          <button
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={resetFilters}
+            disabled={filters.departamento === "Todos" && filters.localidad === "Todos" && filters.barrio === "Todos"}
+          >
+            Limpiar filtros
           </button>
         </div>
       </div>
 
-      <SelectFilters data={allData} filters={filters} setFilters={setFilters} resetFilters={resetFilters} />
-
-      <div className="flex flex-wrap gap-2 mb-2">
-        {allEstados.map(est => (
-          <span key={est} className="px-2 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600 rounded-full">
-            {est}: {estadoCount[est]}
-          </span>
-        ))}
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-slate-50">
-              <th className="w-8"></th>
-              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Departamento</th>
-              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Localidad</th>
-              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Barrio</th>
-              {allEstados.map(est => (
-                <th key={est} className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">{est}</th>
-              ))}
-              <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {Object.entries(grouped).map(([depto, locs]) => {
-              const deptoItems = Object.values(locs).flatMap(b => Object.values(b).flat());
-              const deptoEstadoCount = {};
-              deptoItems.forEach(i => {
-                const est = (i.Estado || "").toString().trim() || "Sin estado";
-                deptoEstadoCount[est] = (deptoEstadoCount[est] || 0) + 1;
-              });
-              return (
-                <React.Fragment key={depto}>
-                  <tr className="bg-slate-50/80 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleDepto(depto)}>
-                    <td className="px-2 py-3 text-center text-slate-400">{expandedDeptos[depto] ? "▼" : "▶"}</td>
-                    <td colSpan={3} className="px-4 py-3 font-bold text-slate-800">{depto}</td>
-                    {allEstados.map(est => (
-                      <td key={est} className="px-4 py-3 text-center text-sm font-semibold text-slate-600">{deptoEstadoCount[est] || 0}</td>
-                    ))}
-                    <td className="px-4 py-3 text-center text-sm font-bold text-slate-900">{deptoItems.length}</td>
-                  </tr>
-
-                  {expandedDeptos[depto] && Object.entries(locs).map(([loc, barriosObj]) => {
-                    const locItems = Object.values(barriosObj).flat();
-                    const locEstadoCount = {};
-                    locItems.forEach(i => {
-                      const est = (i.Estado || "").toString().trim() || "Sin estado";
-                      locEstadoCount[est] = (locEstadoCount[est] || 0) + 1;
-                    });
-                    return (
-                      <React.Fragment key={loc}>
-                        <tr className="cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => toggleLoc(depto, loc)}>
-                          <td></td>
-                          <td className="px-2 py-2.5 text-center text-slate-400 text-xs">{expandedLocs[depto + "|" + loc] ? "▼" : "▶"}</td>
-                          <td colSpan={2} className="px-4 py-2.5 font-semibold text-slate-700">{loc}</td>
-                          {allEstados.map(est => (
-                            <td key={est} className="px-4 py-2.5 text-center text-sm text-slate-600">{locEstadoCount[est] || 0}</td>
-                          ))}
-                          <td className="px-4 py-2.5 text-center text-sm font-semibold text-slate-800">{locItems.length}</td>
-                        </tr>
-
-                        {expandedLocs[depto + "|" + loc] && Object.entries(barriosObj).map(([barrio, items]) => (
-                          <tr key={barrio} className="hover:bg-blue-50/40 transition-colors">
-                            <td></td>
-                            <td></td>
-                            <td className="pl-8 text-sm text-slate-600">{barrio}</td>
-                            <td className="px-4 py-2.5">
-                              <button
-                                className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                                onClick={() => setDetalle({ titulo: `${depto} - ${loc} - ${barrio}`, items })}
-                              >
-                                Ver detalle
-                              </button>
-                            </td>
-                            {allEstados.map(est => {
-                              const count = items.filter(i => (i.Estado || "").toString().trim() === est).length;
-                              return <td key={est} className="px-4 py-2.5 text-center text-sm text-slate-600">{count || 0}</td>;
-                            })}
-                            <td className="px-4 py-2.5 text-center text-sm font-semibold text-slate-800">{items.length}</td>
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    );
-                  })}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Panel lateral de detalle */}
-      <SlidePanel isOpen={!!detalle} onClose={() => setDetalle(null)} title={detalle ? detalle.titulo : ""}>
-        {detalle && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-400 font-medium">TU CASA TU ESCRITURA — Ley 9811</p>
-              <button
-                onClick={() => {
-                  const partes = detalle.titulo.split(" - ");
-                  const params = new URLSearchParams({ formato });
-                  if (partes[0]) params.set("departamento", partes[0]);
-                  if (partes[1]) params.set("localidad", partes[1]);
-                  if (partes[2]) params.set("barrio", partes[2]);
-                  downloadExcel(`${API_URL}/stock/planillas?${params}`, `Stock_${formato}.xlsx`);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-all"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Descargar Excel
-              </button>
-            </div>
-
-            <DetalleTable
-              items={detalle.items}
-              columns={DETALLE_COLUMNS}
-              renderCell={renderDetalleCell}
-            />
-          </div>
+      <div className="space-y-2">
+        {allEstados.length === 0 && (
+          <div className="text-center py-8 text-slate-400 text-sm">Sin datos para los filtros seleccionados</div>
         )}
-      </SlidePanel>
+        {allEstados.map(estado => {
+          const items = estadoGroups[estado];
+          const isOpen = expanded[estado];
+          const formato = ESTADO_FORMATO[estado];
+
+          return (
+            <div key={estado} className="border rounded-lg">
+              <div
+                className="bg-slate-50 hover:bg-slate-100 cursor-pointer p-3 flex justify-between items-center transition-colors"
+                onClick={() => toggleAccordion(estado)}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-400 text-xs">{isOpen ? "▼" : "▶"}</span>
+                  <span className="font-bold text-slate-800 text-sm">{estado}</span>
+                  <span className="px-2 py-0.5 text-[11px] font-semibold bg-slate-200 text-slate-600 rounded-full">
+                    {items.length}
+                  </span>
+                </div>
+                {formato && (
+                  <button
+                    className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 transition-colors font-medium"
+                    onClick={e => {
+                      e.stopPropagation();
+                      downloadExcel(buildExportUrl(formato, filters), `Stock_${formato}.xlsx`);
+                    }}
+                  >
+                    ↓ Excel
+                  </button>
+                )}
+              </div>
+              {isOpen && (
+                <div className="border-t p-3">
+                  <AccordionTable items={items} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
