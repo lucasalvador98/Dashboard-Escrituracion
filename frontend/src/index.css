@@ -225,7 +225,7 @@ body {
   }
 
   .app-main {
-    @apply p-4 h-auto overflow-visible;
+    @apply p-4 pb-20 h-auto overflow-visible;
   }
 
   .filter-group {

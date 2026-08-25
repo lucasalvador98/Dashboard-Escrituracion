@@ -49,7 +49,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="app-sidebar flex flex-col" aria-label="Navegación principal">
+    <aside className="app-sidebar hidden md:flex flex-col" aria-label="Navegación principal">
       {/* Brand */}
       <div className="px-6 py-6">
         <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
+import BottomNav from "./components/BottomNav";
 import RefreshBar from "./components/RefreshBar";
 
 // Shared chrome for every route: desktop sidebar, header, main outlet and footer.
@@ -24,6 +25,8 @@ export default function AppLayout() {
           </div>
         </footer>
       </div>
+
+      <BottomNav />
     </div>
   );
 }
