@@ -7,10 +7,13 @@ from utils.firma_data import generar_firma_excel
 import json
 import os
 import asyncio
+import logging
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import gspread
 from gspread import exceptions as gspread_exceptions
+
+logger = logging.getLogger(__name__)
 
 # Cargar variables de entorno
 load_dotenv()
@@ -160,19 +163,16 @@ def exportar_excel_stock(
     barrio: str = Query(None),
 ):
     """
-    Genera un Excel con el formato del modelo de VILLA CARLOS PAZ,
-    usando los datos de escrituración filtrados por depto/localidad/barrio,
-    solo registros finalizadas (Finalizada sin Entregar y Entregada).
+    DEPRECATED: Use GET /stock/planillas?formato=finalizadas instead.
     """
+    logger.warning("DEPRECATED: GET /stock/exportar — use GET /stock/planillas?formato=finalizadas")
     try:
         sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
         datos = cargar_datos(sheet_url, _get_creds())
 
-        # Filtrar solo finalizadas
         estados_validos = ["Finalizada sin Entregar", "Entregada"]
         datos = [d for d in datos if d.get("Estado") in estados_validos]
 
-        # Filtrar por ubicación
         if departamento:
             datos = [d for d in datos if (d.get("Departamento") or "").upper() == departamento.upper()]
         if localidad:
@@ -180,7 +180,6 @@ def exportar_excel_stock(
         if barrio:
             datos = [d for d in datos if (d.get("Barrio") or "").upper() == barrio.upper()]
 
-        # Armar título
         partes = [p for p in [departamento, localidad, barrio] if p]
         titulo = " / ".join(partes) if partes else "Todas las ubicaciones"
         subtitulo = "TU CASA TU ESCRITURA - Ley 9811"
@@ -210,16 +209,15 @@ def exportar_firma_excel(
     escribano_mail: str = Query(""),
 ):
     """
-    Genera un Excel con formato FIRMA (En Trámite) para un evento de firma.
+    DEPRECATED: Use GET /stock/planillas?formato=firma instead.
     """
+    logger.warning("DEPRECATED: GET /stock/firma/exportar — use GET /stock/planillas?formato=firma")
     try:
         sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
         datos = cargar_datos(sheet_url, _get_creds())
 
-        # Filtrar solo En Trámite
         datos = [d for d in datos if (d.get("Estado") or "").strip() == "En Trámite"]
 
-        # Filtrar por ubicación
         if departamento:
             datos = [d for d in datos if (d.get("Departamento") or "").upper() == departamento.upper()]
         if localidad:
@@ -248,117 +246,38 @@ def exportar_firma_excel(
         raise HTTPException(status_code=500, detail=f"Error al generar Excel de firma: {str(e)}")
 
 
-@app.get("/escrituracion")
-def obtener_datos(skip: int = 0, limit: int = 50, filtro_estado: str = None):
-    try:
-        sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
-        datos = cargar_datos(sheet_url, _get_creds())
+# ─── Generic /stock/planillas endpoint ────────────────────────────────────────
 
-        # Aplicar filtro por estado si se proporciona
-        if filtro_estado:
-            datos = [item for item in datos if item.get("Estado") == filtro_estado]
-
-        # Aplicar paginación
-        total = len(datos)
-        datos = datos[skip: skip + limit]
-
-        return {"total": total, "data": datos}
-    except Exception as e:
-        error_info = _create_error_response(
-            ErrorCode.INTERNAL_ERROR,
-            "Error al procesar los datos",
-            f"Detalle técnico: {str(e)}"
-        )
-        raise HTTPException(status_code=500, detail=error_info)
-def obtener_datos(skip: int = 0, limit: int = 50, filtro_estado: str = None):
-    try:
-        sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
-        datos = cargar_datos(sheet_url, _get_creds())
-
-        # Aplicar filtro por estado si se proporciona
-        if filtro_estado:
-            datos = [item for item in datos if item.get("Estado") == filtro_estado]
-
-        # Aplicar paginación
-        total = len(datos)
-        datos = datos[skip: skip + limit]
-
-        return {"total": total, "data": datos}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al procesar los datos: {str(e)}")
-
-
-# ─── Stock / Exportar Excel ──────────────────────────────────────────────────
-
-@app.get("/stock/exportar")
-def exportar_excel_stock(
-    departamento: str = Query(None),
-    localidad: str = Query(None),
-    barrio: str = Query(None),
-):
-    """
-    Genera un Excel con el formato del modelo de VILLA CARLOS PAZ,
-    usando los datos de escrituración filtrados por depto/localidad/barrio,
-    solo registros finalizadas (Finalizada sin Entregar y Entregada).
-    """
-    try:
-        sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
-        datos = cargar_datos(sheet_url, _get_creds())
-
-        # Filtrar solo finalizadas
-        estados_validos = ["Finalizada sin Entregar", "Entregada"]
-        datos = [d for d in datos if d.get("Estado") in estados_validos]
-
-        # Filtrar por ubicación
-        if departamento:
-            datos = [d for d in datos if (d.get("Departamento") or "").upper() == departamento.upper()]
-        if localidad:
-            datos = [d for d in datos if (d.get("Localidad") or "").upper() == localidad.upper()]
-        if barrio:
-            datos = [d for d in datos if (d.get("Barrio") or "").upper() == barrio.upper()]
-
-        # Armar título
-        partes = [p for p in [departamento, localidad, barrio] if p]
-        titulo = " / ".join(partes) if partes else "Todas las ubicaciones"
-        subtitulo = "TU CASA TU ESCRITURA - Ley 9811"
-
-        buffer = generar_excel(datos, titulo=titulo, subtitulo=subtitulo)
-        filename = f"Stock_{partes[-1] if partes else 'General'}.xlsx".replace(" ", "_")
-
-        return StreamingResponse(
-            buffer,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al generar Excel: {str(e)}")
-
-
-# ─── Stock En Trámite / Exportar FIRMA Excel ─────────────────────────────────
-
-@app.get("/stock/firma/exportar")
-def exportar_firma_excel(
+@app.get("/stock/planillas")
+def exportar_planilla(
+    formato: str = Query(..., description="finalizadas|en-tramite|firma"),
     departamento: str = Query(None),
     localidad: str = Query(None),
     barrio: str = Query(None),
     fecha: str = Query(""),
     hora: str = Query(""),
     lugar: str = Query(""),
-    escribano_nombre: str = Query(""),
-    escribano_tel: str = Query(""),
-    escribano_mail: str = Query(""),
+    escribano: str = Query(""),
 ):
     """
-    Genera un Excel con formato FIRMA (En Trámite) para un evento de firma.
+    Generic endpoint for exporting stock planillas by format.
+    - formato=finalizadas: Finalizada sin Entregar + Entregada
+    - formato=en-tramite: En Trámite
+    - formato=firma: En Trámite with firma-specific fields
     """
     try:
         sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
         datos = cargar_datos(sheet_url, _get_creds())
 
-        # Filtrar solo En Trámite
-        datos = [d for d in datos if (d.get("Estado") or "").strip() == "En Trámite"]
+        if formato == "finalizadas":
+            datos = [d for d in datos if d.get("Estado") in ("Finalizada sin Entregar", "Entregada")]
+        elif formato == "en-tramite":
+            datos = [d for d in datos if (d.get("Estado") or "").strip() == "En Trámite"]
+        elif formato == "firma":
+            datos = [d for d in datos if (d.get("Estado") or "").strip() == "En Trámite"]
+        else:
+            raise HTTPException(status_code=400, detail=f"Formato inválido: {formato}. Use finalizadas, en-tramite, o firma.")
 
-        # Filtrar por ubicación
         if departamento:
             datos = [d for d in datos if (d.get("Departamento") or "").upper() == departamento.upper()]
         if localidad:
@@ -367,21 +286,27 @@ def exportar_firma_excel(
             datos = [d for d in datos if (d.get("Barrio") or "").upper() == barrio.upper()]
 
         partes = [p for p in [departamento, localidad, barrio] if p]
-        titulo = " / ".join(partes) if partes else "En Trámite"
 
-        buffer = generar_firma_excel(
-            datos, titulo=titulo,
-            fecha=fecha, hora=hora, lugar=lugar,
-            escribano_nombre=escribano_nombre,
-            escribano_tel=escribano_tel,
-            escribano_mail=escribano_mail,
-        )
-        filename = f"Firma_{partes[-1] if partes else 'General'}.xlsx".replace(" ", "_")
+        if formato == "firma":
+            titulo = " / ".join(partes) if partes else "En Trámite"
+            buffer = generar_firma_excel(
+                datos, titulo=titulo,
+                fecha=fecha, hora=hora, lugar=lugar,
+                escribano_nombre=escribano, escribano_tel="", escribano_mail="",
+            )
+            filename = f"Firma_{partes[-1] if partes else 'General'}.xlsx".replace(" ", "_")
+        else:
+            titulo = " / ".join(partes) if partes else "Todas las ubicaciones"
+            subtitulo = "TU CASA TU ESCRITURA - Ley 9811"
+            buffer = generar_excel(datos, titulo=titulo, subtitulo=subtitulo)
+            filename = f"Stock_{formato}_{partes[-1] if partes else 'General'}.xlsx".replace(" ", "_")
 
         return StreamingResponse(
             buffer,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al generar Excel de firma: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al generar planilla: {str(e)}")
