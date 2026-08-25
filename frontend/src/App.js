@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "./AppLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -19,6 +19,7 @@ const queryClient = new QueryClient({
 
 // Route table, kept separate from the router so tests can mount it under MemoryRouter.
 export function AppRoutes() {
+  const location = useLocation();
   return (
     <Routes>
       <Route element={<AppLayout />}>
@@ -54,7 +55,7 @@ export function AppRoutes() {
             </ErrorBoundary>
           }
         />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to={{ pathname: "/dashboard", search: location.search }} replace />} />
       </Route>
     </Routes>
   );
