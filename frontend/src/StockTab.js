@@ -13,6 +13,8 @@ const ESTADO_FORMATO = {
 
 const ACCORDION_COLUMNS = [
   { key: "nro", label: "N°", sortable: false },
+  { key: "departamento", label: "Departamento", sortable: true },
+  { key: "localidad", label: "Localidad", sortable: true },
   { key: "barrio", label: "Barrio", sortable: true },
   { key: "mza", label: "Mza", sortable: true },
   { key: "lote", label: "Lote", sortable: true },
@@ -31,6 +33,8 @@ function extractFields(item) {
     lote: item["Lote Plano"] ?? item["Lote oficial"] ?? item["Lote Oficial"] ?? item.Lote ?? item.LOTE ?? "—",
     cotitular: item["COTITULAR Nombre y Apellido"] ?? item["COTITULAR - Nombre y Apellido"] ?? item.Cotitular ?? "—",
     tel: item.Telefono ?? item.telefono ?? "—",
+    departamento: item.Departamento ?? "—",
+    localidad: item.Localidad ?? "—",
     barrio: item.Barrio ?? "—",
     escribano: item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "—",
   };
@@ -105,7 +109,7 @@ function AccordionTable({ items }) {
         type="text"
         value={search}
         onChange={e => { setSearch(e.target.value); setPage(1); }}
-        placeholder="Buscar beneficiario, DNI, barrio..."
+        placeholder="Buscar beneficiario, DNI, departamento, localidad, barrio..."
         className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
@@ -344,7 +348,7 @@ export default function StockTab() {
                       downloadExcel(buildExportUrl(formato, filters), `Stock_${formato}.xlsx`);
                     }}
                   >
-                    ↓ Excel
+                    ↓ Planilla
                   </button>
                 )}
               </div>
