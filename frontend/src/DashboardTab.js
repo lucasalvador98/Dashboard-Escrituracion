@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from "react";
+import { Link, useLocation } from "react-router-dom";
 import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
 import { parseDate, contarDiasHabiles, diffClass, INTERVALS } from "./lib/deadlines";
@@ -67,6 +68,7 @@ function downloadCSV(filename, content) {
 
 export default function DashboardTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
+  const location = useLocation();
   const { state, set, reset } = useUrlState({
     scope: "dashboard",
     defaults: { departamento: "Todos", escribano: "Todos", estado: "Todos", desde: "", hasta: "", tab: "resumen" },
@@ -77,6 +79,15 @@ export default function DashboardTab() {
   const setFilter = useCallback((key, value) => {
     set({ [key]: value });
   }, [set]);
+
+  const linkTo = useCallback((extra) => {
+    const params = new URLSearchParams(location.search);
+    Object.entries(extra).forEach(([k, v]) => {
+      if (v == null || v === "" || v === "Todos") params.delete(k);
+      else params.set(k, v);
+    });
+    return { pathname: "/dashboard", search: params.toString() ? `?${params.toString()}` : "" };
+  }, [location.search]);
 
   const hasActiveFilters = state.departamento !== "Todos" || state.escribano !== "Todos" || state.estado !== "Todos" || state.desde || state.hasta;
 
@@ -520,54 +531,62 @@ export default function DashboardTab() {
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard
-          label="Total Escrituraciones"
-          value={kpis.total}
-          color="#3b82f6"
-          bg="from-blue-50 to-blue-100/50"
-          delta={kpis.ingresosEsteMes}
-          deltaLabel="ingresos este mes"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>
-            </svg>
-          }
-        />
-        <KPICard
-          label="En Trámite"
-          value={kpis.enProceso}
-          color="#f59e0b"
-          bg="from-amber-50 to-amber-100/50"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-            </svg>
-          }
-        />
-        <KPICard
-          label="Finalizadas"
-          value={kpis.finalizadas}
-          color="#10b981"
-          bg="from-emerald-50 to-emerald-100/50"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>
-            </svg>
-          }
-        />
-        <KPICard
-          label="Firmas este Mes"
-          value={kpis.finalizadasEsteMes}
-          color="#8b5cf6"
-          bg="from-violet-50 to-violet-100/50"
-          delta={kpis.deltaFirmas}
-          deltaLabel="vs mes anterior"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-          }
-        />
+        <Link to={linkTo({ tab: "resumen" })} className="block">
+          <KPICard
+            label="Total Escrituraciones"
+            value={kpis.total}
+            color="#3b82f6"
+            bg="from-blue-50 to-blue-100/50"
+            delta={kpis.ingresosEsteMes}
+            deltaLabel="ingresos este mes"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>
+              </svg>
+            }
+          />
+        </Link>
+        <Link to={linkTo({ tab: "resumen", estado: "En Trámite" })} className="block">
+          <KPICard
+            label="En Trámite"
+            value={kpis.enProceso}
+            color="#f59e0b"
+            bg="from-amber-50 to-amber-100/50"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+              </svg>
+            }
+          />
+        </Link>
+        <Link to={linkTo({ tab: "resumen" })} className="block">
+          <KPICard
+            label="Finalizadas"
+            value={kpis.finalizadas}
+            color="#10b981"
+            bg="from-emerald-50 to-emerald-100/50"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>
+              </svg>
+            }
+          />
+        </Link>
+        <Link to={linkTo({ tab: "resumen" })} className="block">
+          <KPICard
+            label="Firmas este Mes"
+            value={kpis.finalizadasEsteMes}
+            color="#8b5cf6"
+            bg="from-violet-50 to-violet-100/50"
+            delta={kpis.deltaFirmas}
+            deltaLabel="vs mes anterior"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            }
+          />
+        </Link>
       </div>
 
       {/* ── Row: Chart + Estado breakdown ── */}
@@ -610,17 +629,11 @@ export default function DashboardTab() {
             ].filter(s => s.count > 0).map(s => {
               const pct = kpis.total ? Math.round((s.count / kpis.total) * 100) : 0;
               const isActive = state.estado === s.label;
-              const handleClick = () => {
-                set({ estado: isActive ? "Todos" : s.label });
-              };
               return (
-                <div
+                <Link
                   key={s.label}
-                  role="button"
-                  tabIndex={0}
-                  onClick={handleClick}
-                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
-                  className={`cursor-pointer rounded-lg p-1.5 -m-1.5 transition-colors ${isActive ? "bg-slate-100" : "hover:bg-slate-50"}`}
+                  to={linkTo({ estado: isActive ? "Todos" : s.label, tab: "resumen" })}
+                  className={`block rounded-lg p-1.5 -m-1.5 transition-colors ${isActive ? "bg-slate-100" : "hover:bg-slate-50"}`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
@@ -635,7 +648,7 @@ export default function DashboardTab() {
                       style={{ width: `${pct}%`, backgroundColor: s.color, opacity: state.estado && !isActive ? 0.3 : 1 }}
                     />
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
