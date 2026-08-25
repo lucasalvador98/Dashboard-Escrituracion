@@ -32,6 +32,10 @@ function getEscribano(item) {
   return item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";
 }
 
+function isIPV(item) {
+  return /DIRECC[IÓO]N DE VIVIENDAS/i.test(item.Observaciones || "");
+}
+
 // Plazo esperado Acep→Firma (días hábiles), según cronología oficial
 const ESCROW_ESPERADO = 20;
 
@@ -986,6 +990,7 @@ export default function DashboardTab() {
                                   key={idx}
                                   onClick={() => setDemoradoDetail(item)}
                                   className={`border-b border-slate-50 last:border-0 cursor-pointer transition-colors ${SEVERIDAD_STYLE[sev].row}`}
+                                  title={isIPV(item) ? "IPV: Caso en Dirección de Viviendas" : undefined}
                                 >
                                   <td className="py-2 px-2 font-semibold text-slate-800">{item._beneficiario}</td>
                                   <td className="py-2 px-2 font-mono text-slate-500">{item.DNI || "—"}</td>
