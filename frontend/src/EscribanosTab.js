@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import useDataLoader from "./hooks/useDataLoader";
+import useUrlState from "./hooks/useUrlState";
 import SlidePanel from "./components/SlidePanel";
 
 const ITEMS_PER_PAGE = 15;
@@ -35,7 +36,12 @@ function estadoClass(estado) {
 
 export default function EscribanosTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
-  const [search, setSearch] = useState("");
+  const { state: urlState, set: setUrl } = useUrlState({
+    scope: "escribanos",
+    defaults: { search: "" },
+    sharedKeys: ["escribano", "estado"],
+    scopedKeys: ["search"],
+  });
   const [page, setPage] = useState(1);
   const [selectedEscribano, setSelectedEscribano] = useState(null);
 
@@ -72,10 +78,10 @@ export default function EscribanosTab() {
   }, [allData]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return escribanos;
-    const q = search.trim().toUpperCase();
+    if (!urlState.search.trim()) return escribanos;
+    const q = urlState.search.trim().toUpperCase();
     return escribanos.filter(e => e.nombre.toUpperCase().includes(q));
-  }, [escribanos, search]);
+  }, [escribanos, urlState.search]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -83,7 +89,7 @@ export default function EscribanosTab() {
   const paginated = filtered.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
 
   // Reset page on search
-  const handleSearch = (val) => { setSearch(val); setPage(1); };
+  const handleSearch = (val) => { setUrl({ search: val }); setPage(1); };
 
   function renderPagination() {
     if (totalPages <= 1) return null;
@@ -132,7 +138,7 @@ export default function EscribanosTab() {
             type="text"
             className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Buscar escribano..."
-            value={search}
+            value={urlState.search}
             onChange={e => handleSearch(e.target.value)}
           />
         </div>

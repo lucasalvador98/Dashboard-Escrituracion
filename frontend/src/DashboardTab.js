@@ -1,5 +1,7 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import useDataLoader from "./hooks/useDataLoader";
+import useUrlState from "./hooks/useUrlState";
+import { parseDate, contarDiasHabiles, diffClass, INTERVALS } from "./lib/deadlines";
 import SlidePanel from "./components/SlidePanel";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -32,15 +34,6 @@ function getEscribano(item) {
 // Plazo esperado Acep→Firma (días hábiles), según cronología oficial
 const ESCROW_ESPERADO = 20;
 
-function diffClass(val, esperado) {
-  if (val === "N/A" || val === "" || val == null) return "gray";
-  const n = Number(val);
-  if (isNaN(n)) return "gray";
-  if (n <= esperado) return "green";
-  if (n <= Math.ceil(esperado * 1.3)) return "yellow";
-  return "red";
-}
-
 // Severidad de un caso demorado — misma regla que el semáforo de la matriz
 // (verde ≤ esperado, amarillo ≤ esperado×1.3, rojo por encima)
 function severidadDias(dias) {
@@ -61,36 +54,6 @@ function formatFechaCorta(f) {
   return d.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function parseDate(f) {
-  if (!f || f === "N/A") return null;
-  try {
-    return new Date(f.includes("/") ? f.split("/").reverse().join("-") : f);
-  } catch { return null; }
-}
-
-function contarDiasHabiles(inicio, fin) {
-  const d1 = parseDate(inicio);
-  const d2 = parseDate(fin);
-  if (!d1 || !d2) return null;
-  let count = 0;
-  const current = new Date(d1);
-  current.setDate(current.getDate() + 1);
-  while (current <= d2) {
-    const d = current.getDay();
-    if (d !== 0 && d !== 6) count++;
-    current.setDate(current.getDate() + 1);
-  }
-  return count;
-}
-
-const INTERVALS = [
-  { key: "diferencia_ingreso_sorteo", label: "Ing→Sort", fecha1: "Fecha Ingreso Colegio de Escribanos", fecha2: "Fecha de Sorteo", esperado: 10 },
-  { key: "diferencia_sorteo_aceptacion", label: "Sort→Acep", fecha1: "Fecha de Sorteo", fecha2: "Fecha de Aceptacion", esperado: 5 },
-  { key: "diferencia_aceptacion_firma", label: "Acep→Firma", fecha1: "Fecha de Aceptacion", fecha2: "Fecha de Firma", esperado: 20 },
-  { key: "diferencia_firma_ingreso", label: "Firma→IngD", fecha1: "Fecha de Firma", fecha2: "Fecha de Ingreso al Registro", esperado: 5 },
-  { key: "diferencia_ingreso_testimonio", label: "IngD→Test", fecha1: "Fecha de Ingreso al Registro", fecha2: "Fecha de envío PT digital", esperado: 15 },
-];
-
 function downloadCSV(filename, content) {
   const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -104,65 +67,38 @@ function downloadCSV(filename, content) {
 
 export default function DashboardTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
-  const [activeTab, setActiveTab] = useState(
-    () => new URLSearchParams(window.location.search).get("tab") === "demorados" ? "demorados" : "resumen"
-  );
-
-  // ── Filter state (leído de la URL) ──
-  const [filters, setFilters] = useState(() => {
-    const p = new URLSearchParams(window.location.search);
-    return {
-      department: p.get("depto") || "Todos",
-      escribano: p.get("escribano") || "Todos",
-      status: p.get("estado") || "Todos",
-      dateFrom: p.get("desde") || "",
-      dateTo: p.get("hasta") || "",
-    };
+  const { state, set, reset } = useUrlState({
+    scope: "dashboard",
+    defaults: { departamento: "Todos", escribano: "Todos", estado: "Todos", desde: "", hasta: "", tab: "resumen" },
+    sharedKeys: ["escribano", "estado"],
+    paramMap: { departamento: "depto", desde: "desde", hasta: "hasta", tab: "tab" },
   });
 
-  // ── Persistir filtros en la URL ──
-  useEffect(() => {
-    const p = new URLSearchParams();
-    if (filters.department !== "Todos") p.set("depto", filters.department);
-    if (filters.escribano !== "Todos") p.set("escribano", filters.escribano);
-    if (filters.status !== "Todos") p.set("estado", filters.status);
-    if (filters.dateFrom) p.set("desde", filters.dateFrom);
-    if (filters.dateTo) p.set("hasta", filters.dateTo);
-    if (activeTab === "demorados") p.set("tab", "demorados");
-    const qs = p.toString();
-    const base = window.location.pathname;
-    window.history.replaceState(null, "", qs ? `${base}?${qs}` : base);
-  }, [filters, activeTab]);
-
   const setFilter = useCallback((key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
+    set({ [key]: value });
+  }, [set]);
 
-  const clearFilters = useCallback(() => {
-    setFilters({ department: "Todos", escribano: "Todos", status: "Todos", dateFrom: "", dateTo: "" });
-  }, []);
-
-  const hasActiveFilters = filters.department !== "Todos" || filters.escribano !== "Todos" || filters.status !== "Todos" || filters.dateFrom || filters.dateTo;
+  const hasActiveFilters = state.departamento !== "Todos" || state.escribano !== "Todos" || state.estado !== "Todos" || state.desde || state.hasta;
 
   // ── Apply filters ──
   const filteredData = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return data.filter(item => {
-      if (filters.department !== "Todos" && item.Departamento !== filters.department) return false;
-      if (filters.escribano !== "Todos" && getEscribano(item) !== filters.escribano) return false;
-      if (filters.status !== "Todos") {
+      if (state.departamento !== "Todos" && item.Departamento !== state.departamento) return false;
+      if (state.escribano !== "Todos" && getEscribano(item) !== state.escribano) return false;
+      if (state.estado !== "Todos") {
         const est = (item.Estado || item.estado || "").toString().trim();
-        if (est !== filters.status) return false;
+        if (est !== state.estado) return false;
       }
-      if (filters.dateFrom || filters.dateTo) {
+      if (state.desde || state.hasta) {
         const fechaFirma = parseDate(item["Fecha de Firma"]);
         if (!fechaFirma) return false;
-        if (filters.dateFrom && fechaFirma < new Date(filters.dateFrom)) return false;
-        if (filters.dateTo && fechaFirma > new Date(filters.dateTo)) return false;
+        if (state.desde && fechaFirma < new Date(state.desde)) return false;
+        if (state.hasta && fechaFirma > new Date(state.hasta)) return false;
       }
       return true;
     });
-  }, [data, filters]);
+  }, [data, state]);
 
   // ── Dropdown options (from full data) ──
   const { departments, escribanos, statuses } = useMemo(() => {
@@ -500,11 +436,11 @@ export default function DashboardTab() {
             <button
               key={tab.key}
               className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
-                activeTab === tab.key
+                state.tab === tab.key
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
               }`}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => set({ tab: tab.key })}
             >
               {tab.label}
             </button>
@@ -519,7 +455,7 @@ export default function DashboardTab() {
         </button>
       </div>
 
-      {activeTab === "resumen" ? (
+      {state.tab === "resumen" ? (
         <>
           {/* ── Dashboard Filters ── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
@@ -528,8 +464,8 @@ export default function DashboardTab() {
 
           <select
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.department}
-            onChange={e => setFilter("department", e.target.value)}
+            value={state.departamento}
+            onChange={e => set({ departamento: e.target.value })}
           >
             <option value="Todos">Todos los departamentos</option>
             {departments.map(d => <option key={d} value={d}>{d}</option>)}
@@ -537,8 +473,8 @@ export default function DashboardTab() {
 
           <select
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.escribano}
-            onChange={e => setFilter("escribano", e.target.value)}
+            value={state.escribano}
+            onChange={e => set({ escribano: e.target.value })}
           >
             <option value="Todos">Todos los escribanos</option>
             {escribanos.map(e => <option key={e} value={e}>{e}</option>)}
@@ -546,8 +482,8 @@ export default function DashboardTab() {
 
           <select
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.status}
-            onChange={e => setFilter("status", e.target.value)}
+            value={state.estado}
+            onChange={e => set({ estado: e.target.value })}
           >
             <option value="Todos">Todos los estados</option>
             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
@@ -556,20 +492,20 @@ export default function DashboardTab() {
           <input
             type="date"
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.dateFrom}
-            onChange={e => setFilter("dateFrom", e.target.value)}
+            value={state.desde}
+            onChange={e => set({ desde: e.target.value })}
             placeholder="Desde"
           />
           <input
             type="date"
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.dateTo}
-            onChange={e => setFilter("dateTo", e.target.value)}
+            value={state.hasta}
+            onChange={e => set({ hasta: e.target.value })}
             placeholder="Hasta"
           />
 
           <button
-            onClick={clearFilters}
+            onClick={reset}
             disabled={!hasActiveFilters}
             className="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:bg-red-50 enabled:hover:text-red-700 enabled:hover:border-red-200 text-slate-500 border-slate-200 bg-white"
           >
@@ -673,9 +609,9 @@ export default function DashboardTab() {
               { label: "No Retiradas", count: kpis.estadoCount["No Retiradas"] || 0, color: "#94a3b8" },
             ].filter(s => s.count > 0).map(s => {
               const pct = kpis.total ? Math.round((s.count / kpis.total) * 100) : 0;
-              const isActive = filters.status === s.label;
+              const isActive = state.estado === s.label;
               const handleClick = () => {
-                setFilter("status", isActive ? "Todos" : s.label);
+                set({ estado: isActive ? "Todos" : s.label });
               };
               return (
                 <div
@@ -696,7 +632,7 @@ export default function DashboardTab() {
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{ width: `${pct}%`, backgroundColor: s.color, opacity: filters.status && !isActive ? 0.3 : 1 }}
+                      style={{ width: `${pct}%`, backgroundColor: s.color, opacity: state.estado && !isActive ? 0.3 : 1 }}
                     />
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import useDataLoader from "./hooks/useDataLoader";
-import useFilters from "./hooks/useFilters";
+import useUrlState from "./hooks/useUrlState";
 import SelectFilters from "./components/SelectFilters";
 import SlidePanel from "./components/SlidePanel";
 import API_CONFIG from "./config-api";
@@ -156,7 +156,11 @@ function renderDetalleCell(key, item, idx) {
 
 export default function StockTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
-  const [activeSubTab, setActiveSubTab] = useState("finalizadas");
+  const { state: tabState, set: setTab } = useUrlState({
+    scope: "stock",
+    defaults: { subtab: "finalizadas" },
+    scopedKeys: ["subtab"],
+  });
 
   return (
     <div className="space-y-4">
@@ -170,11 +174,11 @@ export default function StockTab() {
             <button
               key={tab.key}
               className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
-                activeSubTab === tab.key
+                tabState.subtab === tab.key
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
               }`}
-              onClick={() => setActiveSubTab(tab.key)}
+              onClick={() => setTab({ subtab: tab.key })}
             >
               {tab.label}
             </button>
@@ -182,7 +186,7 @@ export default function StockTab() {
         </div>
       </div>
 
-      {activeSubTab === "finalizadas" ? (
+      {tabState.subtab === "finalizadas" ? (
         <StockFinalizadas data={data} loading={loading} error={error} />
       ) : (
         <StockTramite data={data} loading={loading} error={error} />
@@ -195,9 +199,11 @@ export default function StockTab() {
 // ─── FINALIZADAS ──────────────────────────────────────────────────────────────
 
 function StockFinalizadas({ data, loading, error }) {
-  const { filters, setFilters, applyFilters, resetFilters } = useFilters({
-    departamento: "Todos", localidad: "Todos", barrio: "Todos",
-    estado: "Todos", escribano: "", dni: "",
+  const { state: filters, set: setFilters, reset: resetFilters } = useUrlState({
+    scope: "stock",
+    defaults: { departamento: "Todos", localidad: "Todos", barrio: "Todos", estado: "Todos", escribano: "", dni: "" },
+    sharedKeys: ["escribano", "estado"],
+    replaceKeys: ["dni"],
   });
 
   const ESTADOS = ["Finalizada sin Entregar", "Entregada"];
@@ -207,7 +213,20 @@ function StockFinalizadas({ data, loading, error }) {
     [data]
   );
 
-  const filtered = useMemo(() => applyFilters(finalizadas), [finalizadas, filters, applyFilters]);
+  const filtered = useMemo(() => {
+    if (!Array.isArray(finalizadas)) return [];
+    return finalizadas.filter(item => {
+      if (filters.departamento && filters.departamento !== "Todos" && item.Departamento && !item.Departamento.toUpperCase().includes(filters.departamento.trim().toUpperCase())) return false;
+      if (filters.localidad && filters.localidad !== "Todos" && item.Localidad && !item.Localidad.toUpperCase().includes(filters.localidad.trim().toUpperCase())) return false;
+      if (filters.barrio && filters.barrio !== "Todos" && item.Barrio && !item.Barrio.toUpperCase().includes(filters.barrio.trim().toUpperCase())) return false;
+      if (filters.estado && filters.estado !== "Todos" && item.Estado && !item.Estado.toUpperCase().includes(filters.estado.trim().toUpperCase())) return false;
+      const itemDNI = item?.DNI ?? item?.dni ?? item?.documento ?? "";
+      if (filters.dni && (!itemDNI || !String(itemDNI).includes(filters.dni))) return false;
+      const itemEscribano = item?.["Escribano Designado"] ?? item?.Escribano ?? item?.escribano ?? "";
+      if (filters.escribano && (!itemEscribano || !itemEscribano.toUpperCase().includes(filters.escribano.trim().toUpperCase()))) return false;
+      return true;
+    });
+  }, [finalizadas, filters]);
 
   const grouped = useMemo(() => {
     const g = {};
@@ -348,9 +367,11 @@ function StockFinalizadas({ data, loading, error }) {
 // ─── EN TRÁMITE ───────────────────────────────────────────────────────────────
 
 function StockTramite({ data, loading, error }) {
-  const { filters, setFilters, applyFilters, resetFilters } = useFilters({
-    departamento: "Todos", localidad: "Todos", barrio: "Todos",
-    estado: "Todos", escribano: "", dni: "",
+  const { state: filters, set: setFilters, reset: resetFilters } = useUrlState({
+    scope: "stock",
+    defaults: { departamento: "Todos", localidad: "Todos", barrio: "Todos", estado: "Todos", escribano: "", dni: "" },
+    sharedKeys: ["escribano", "estado"],
+    replaceKeys: ["dni"],
   });
 
   const tramite = useMemo(
@@ -358,7 +379,20 @@ function StockTramite({ data, loading, error }) {
     [data]
   );
 
-  const filtered = useMemo(() => applyFilters(tramite), [tramite, filters, applyFilters]);
+  const filtered = useMemo(() => {
+    if (!Array.isArray(tramite)) return [];
+    return tramite.filter(item => {
+      if (filters.departamento && filters.departamento !== "Todos" && item.Departamento && !item.Departamento.toUpperCase().includes(filters.departamento.trim().toUpperCase())) return false;
+      if (filters.localidad && filters.localidad !== "Todos" && item.Localidad && !item.Localidad.toUpperCase().includes(filters.localidad.trim().toUpperCase())) return false;
+      if (filters.barrio && filters.barrio !== "Todos" && item.Barrio && !item.Barrio.toUpperCase().includes(filters.barrio.trim().toUpperCase())) return false;
+      if (filters.estado && filters.estado !== "Todos" && item.Estado && !item.Estado.toUpperCase().includes(filters.estado.trim().toUpperCase())) return false;
+      const itemDNI = item?.DNI ?? item?.dni ?? item?.documento ?? "";
+      if (filters.dni && (!itemDNI || !String(itemDNI).includes(filters.dni))) return false;
+      const itemEscribano = item?.["Escribano Designado"] ?? item?.Escribano ?? item?.escribano ?? "";
+      if (filters.escribano && (!itemEscribano || !itemEscribano.toUpperCase().includes(filters.escribano.trim().toUpperCase()))) return false;
+      return true;
+    });
+  }, [tramite, filters]);
 
   const grouped = useMemo(() => {
     const g = {};

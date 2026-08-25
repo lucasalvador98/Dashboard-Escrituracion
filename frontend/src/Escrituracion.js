@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import useDataLoader from "./hooks/useDataLoader";
-import useFilters from "./hooks/useFilters";
+import useUrlState from "./hooks/useUrlState";
 import useExportCSV from "./hooks/useExportCSV";
 import useEscrituracion, { TABLE_COLUMNS, INTERVALS } from "./hooks/useEscrituracion";
 import SelectFilters from "./components/SelectFilters";
@@ -14,9 +14,11 @@ const itemsPerPage = 15;
 
 export default function Escrituracion() {
   const { data, loading, error } = useDataLoader("escrituracion");
-  const { filters, setFilters, resetFilters } = useFilters({
-    departamento: "Todos", localidad: "Todos", barrio: "Todos",
-    estado: "Todos", escribano: "", dni: ""
+  const { state: filters, set: setFilters, reset: resetFilters } = useUrlState({
+    scope: "escrituracion",
+    defaults: { departamento: "Todos", localidad: "Todos", barrio: "Todos", estado: "Todos", escribano: "", dni: "" },
+    sharedKeys: ["escribano", "estado"],
+    replaceKeys: ["dni"],
   });
 
   const rawData = Array.isArray(data) ? data : [];
