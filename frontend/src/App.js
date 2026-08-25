@@ -7,6 +7,7 @@ import DashboardTab from "./DashboardTab";
 import Escrituracion from "./Escrituracion";
 import StockTab from "./StockTab";
 import EscribanosTab from "./EscribanosTab";
+import ExpedienteDetail from "./ExpedienteDetail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,6 +53,14 @@ export function AppRoutes() {
           element={
             <ErrorBoundary key="escribanos" name="Escribanos">
               <EscribanosTab />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/expediente/:id"
+          element={
+            <ErrorBoundary key="expediente" name="Expediente">
+              <ExpedienteDetail />
             </ErrorBoundary>
           }
         />
