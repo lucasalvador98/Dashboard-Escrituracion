@@ -3,6 +3,10 @@ import { INTERVALS } from "../hooks/useEscrituracion";
 import { diffClass } from "../hooks/useEscrituracion";
 import ColumnToggle from "./ColumnToggle";
 
+function isIPV(item) {
+  return /DIRECC[IÓO]N DE VIVIENDAS/i.test(item.Observaciones || "");
+}
+
 export default function MatrixTable({
   allColumns, visibleCols, sortCol, sortOrder, handleSort,
   paginatedData, safePage, itemsPerPage, filterByField,
@@ -95,7 +99,7 @@ export default function MatrixTable({
             const beneficiario = item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? item.ApellidoYNombre ?? "—";
 
             return (
-              <tr key={stableKey}>
+              <tr key={stableKey} title={isIPV(item) ? "IPV: Caso en Dirección de Viviendas" : undefined}>
                 <td className="row-num">{idx + 1 + (safePage - 1) * itemsPerPage}</td>
                 {visibleColumns.map(c => {
                   if (c.key.startsWith("diferencia_")) {

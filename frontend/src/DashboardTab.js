@@ -32,6 +32,10 @@ function getEscribano(item) {
   return item["Escribano Designado"] ?? item.Escribano ?? item.escribano ?? "";
 }
 
+function isIPV(item) {
+  return /DIRECC[IÓO]N DE VIVIENDAS/i.test(item.Observaciones || "");
+}
+
 // Plazo esperado Acep→Firma (días hábiles), según cronología oficial
 const ESCROW_ESPERADO = 20;
 
@@ -272,6 +276,9 @@ export default function DashboardTab() {
       if (val === "N/A" || val == null) return;
       const n = Number(val);
       if (isNaN(n) || n <= ESCROW_ESPERADO) return;
+
+      const est = (item.Estado || item.estado || "").toString().trim();
+      if (est !== "En Trámite") return;
 
       const nombre = getEscribano(item);
       if (!nombre) return;
@@ -903,11 +910,11 @@ export default function DashboardTab() {
                 {/* Master-detail: sidebar escribanos + tabla */}
                 <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4 items-start">
                   {/* Sidebar de escribanos */}
-                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[300px] lg:max-h-[480px]">
                     <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Escribanos</span>
                     </div>
-                    <div className="max-h-[480px] overflow-y-auto divide-y divide-slate-50">
+                    <div className="overflow-auto divide-y divide-slate-50">
                       <button
                         onClick={() => setDemoradoFiltro(f => ({ ...f, escribano: "" }))}
                         className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
@@ -986,6 +993,7 @@ export default function DashboardTab() {
                                   key={idx}
                                   onClick={() => setDemoradoDetail(item)}
                                   className={`border-b border-slate-50 last:border-0 cursor-pointer transition-colors ${SEVERIDAD_STYLE[sev].row}`}
+                                  title={isIPV(item) ? "IPV: Caso en Dirección de Viviendas" : undefined}
                                 >
                                   <td className="py-2 px-2 font-semibold text-slate-800">{item._beneficiario}</td>
                                   <td className="py-2 px-2 font-mono text-slate-500">{item.DNI || "—"}</td>

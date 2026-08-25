@@ -24,6 +24,8 @@ export default function Escrituracion() {
   const rawData = Array.isArray(data) ? data : [];
   const hook = useEscrituracion(rawData, filters, setFilters);
 
+  const ipvCount = rawData.filter(item => /DIRECC[IÓO]N DE VIVIENDAS/i.test(item.Observaciones || "")).length;
+
   const exportColumns = hook.allColumns
     .filter(c => hook.visibleCols.includes(c.key))
     .map(c => ({ key: c.key, label: c.label }));
@@ -90,6 +92,7 @@ export default function Escrituracion() {
         setSelectedEstado={hook.setSelectedEstado}
         setFilters={setFilters}
         setPage={hook.setPage}
+        ipvCount={ipvCount}
       />
 
       {loading && (
