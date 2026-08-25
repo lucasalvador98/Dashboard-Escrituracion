@@ -1,11 +1,12 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 
-export default function Sidebar({ activeTab, setActiveTab }) {
+export default function Sidebar() {
   const items = [
-    { idx: 0, label: "Dashboard", icon: "dashboard" },
-    { idx: 1, label: "Escrituración", icon: "home" },
-    { idx: 2, label: "Stock", icon: "table" },
-    { idx: 3, label: "Escribanos", icon: "escribano" }
+    { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { to: "/escrituracion", label: "Escrituración", icon: "home" },
+    { to: "/stock", label: "Stock", icon: "table" },
+    { to: "/escribanos", label: "Escribanos", icon: "escribano" }
   ];
 
   const Icon = ({ name }) => {
@@ -34,14 +35,6 @@ export default function Sidebar({ activeTab, setActiveTab }) {
             <path d="M12 4v16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
         );
-      case "money":
-        return (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <rect x="2" y="7" width="20" height="10" rx="2" stroke="currentColor" strokeWidth="1.6"/>
-            <path d="M12 11.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" stroke="currentColor" strokeWidth="1.4"/>
-            <path d="M7 12h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-          </svg>
-        );
       case "escribano":
         return (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -56,7 +49,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
   };
 
   return (
-    <aside className="app-sidebar flex flex-col" aria-label="Navegación principal">
+    <aside className="app-sidebar hidden md:flex flex-col" aria-label="Navegación principal">
       {/* Brand */}
       <div className="px-6 py-6">
         <div className="flex items-center gap-3">
@@ -78,21 +71,26 @@ export default function Sidebar({ activeTab, setActiveTab }) {
       {/* Navegación principal */}
       <nav className="flex-1 px-4 py-3" aria-label="Pestañas">
         {items.map(it => (
-          <div key={it.idx} className="mb-1">
-            <button
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300 ${
-                activeTab === it.idx
-                  ? "bg-slate-900 text-white shadow-md shadow-slate-200"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-              onClick={() => setActiveTab(it.idx)}
-              aria-pressed={activeTab === it.idx}
+          <div key={it.to} className="mb-1">
+            <NavLink
+              to={it.to}
+              className={({ isActive }) =>
+                `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300 ${
+                  isActive
+                    ? "bg-slate-900 text-white shadow-md shadow-slate-200"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                }`
+              }
             >
-              <span className={`flex-shrink-0 ${activeTab === it.idx ? "text-blue-400" : "text-slate-400"}`}>
-                <Icon name={it.icon} />
-              </span>
-              <span className="text-sm font-bold tracking-tight">{it.label}</span>
-            </button>
+              {({ isActive }) => (
+                <>
+                  <span className={`flex-shrink-0 ${isActive ? "text-blue-400" : "text-slate-400"}`}>
+                    <Icon name={it.icon} />
+                  </span>
+                  <span className="text-sm font-bold tracking-tight">{it.label}</span>
+                </>
+              )}
+            </NavLink>
           </div>
         ))}
       </nav>

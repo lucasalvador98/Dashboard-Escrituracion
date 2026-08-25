@@ -1,5 +1,8 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback } from "react";
+import { Link, useLocation } from "react-router-dom";
 import useDataLoader from "./hooks/useDataLoader";
+import useUrlState from "./hooks/useUrlState";
+import { parseDate, contarDiasHabiles, diffClass, INTERVALS } from "./lib/deadlines";
 import SlidePanel from "./components/SlidePanel";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -32,15 +35,6 @@ function getEscribano(item) {
 // Plazo esperado Acep→Firma (días hábiles), según cronología oficial
 const ESCROW_ESPERADO = 20;
 
-function diffClass(val, esperado) {
-  if (val === "N/A" || val === "" || val == null) return "gray";
-  const n = Number(val);
-  if (isNaN(n)) return "gray";
-  if (n <= esperado) return "green";
-  if (n <= Math.ceil(esperado * 1.3)) return "yellow";
-  return "red";
-}
-
 // Severidad de un caso demorado — misma regla que el semáforo de la matriz
 // (verde ≤ esperado, amarillo ≤ esperado×1.3, rojo por encima)
 function severidadDias(dias) {
@@ -61,36 +55,6 @@ function formatFechaCorta(f) {
   return d.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function parseDate(f) {
-  if (!f || f === "N/A") return null;
-  try {
-    return new Date(f.includes("/") ? f.split("/").reverse().join("-") : f);
-  } catch { return null; }
-}
-
-function contarDiasHabiles(inicio, fin) {
-  const d1 = parseDate(inicio);
-  const d2 = parseDate(fin);
-  if (!d1 || !d2) return null;
-  let count = 0;
-  const current = new Date(d1);
-  current.setDate(current.getDate() + 1);
-  while (current <= d2) {
-    const d = current.getDay();
-    if (d !== 0 && d !== 6) count++;
-    current.setDate(current.getDate() + 1);
-  }
-  return count;
-}
-
-const INTERVALS = [
-  { key: "diferencia_ingreso_sorteo", label: "Ing→Sort", fecha1: "Fecha Ingreso Colegio de Escribanos", fecha2: "Fecha de Sorteo", esperado: 10 },
-  { key: "diferencia_sorteo_aceptacion", label: "Sort→Acep", fecha1: "Fecha de Sorteo", fecha2: "Fecha de Aceptacion", esperado: 5 },
-  { key: "diferencia_aceptacion_firma", label: "Acep→Firma", fecha1: "Fecha de Aceptacion", fecha2: "Fecha de Firma", esperado: 20 },
-  { key: "diferencia_firma_ingreso", label: "Firma→IngD", fecha1: "Fecha de Firma", fecha2: "Fecha de Ingreso al Registro", esperado: 5 },
-  { key: "diferencia_ingreso_testimonio", label: "IngD→Test", fecha1: "Fecha de Ingreso al Registro", fecha2: "Fecha de envío PT digital", esperado: 15 },
-];
-
 function downloadCSV(filename, content) {
   const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -104,65 +68,48 @@ function downloadCSV(filename, content) {
 
 export default function DashboardTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
-  const [activeTab, setActiveTab] = useState(
-    () => new URLSearchParams(window.location.search).get("tab") === "demorados" ? "demorados" : "resumen"
-  );
-
-  // ── Filter state (leído de la URL) ──
-  const [filters, setFilters] = useState(() => {
-    const p = new URLSearchParams(window.location.search);
-    return {
-      department: p.get("depto") || "Todos",
-      escribano: p.get("escribano") || "Todos",
-      status: p.get("estado") || "Todos",
-      dateFrom: p.get("desde") || "",
-      dateTo: p.get("hasta") || "",
-    };
+  const location = useLocation();
+  const { state, set, reset } = useUrlState({
+    scope: "dashboard",
+    defaults: { departamento: "Todos", escribano: "Todos", estado: "Todos", desde: "", hasta: "", tab: "resumen" },
+    sharedKeys: ["escribano", "estado"],
+    paramMap: { departamento: "depto", desde: "desde", hasta: "hasta", tab: "tab" },
   });
 
-  // ── Persistir filtros en la URL ──
-  useEffect(() => {
-    const p = new URLSearchParams();
-    if (filters.department !== "Todos") p.set("depto", filters.department);
-    if (filters.escribano !== "Todos") p.set("escribano", filters.escribano);
-    if (filters.status !== "Todos") p.set("estado", filters.status);
-    if (filters.dateFrom) p.set("desde", filters.dateFrom);
-    if (filters.dateTo) p.set("hasta", filters.dateTo);
-    if (activeTab === "demorados") p.set("tab", "demorados");
-    const qs = p.toString();
-    const base = window.location.pathname;
-    window.history.replaceState(null, "", qs ? `${base}?${qs}` : base);
-  }, [filters, activeTab]);
-
   const setFilter = useCallback((key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
+    set({ [key]: value });
+  }, [set]);
 
-  const clearFilters = useCallback(() => {
-    setFilters({ department: "Todos", escribano: "Todos", status: "Todos", dateFrom: "", dateTo: "" });
-  }, []);
+  const linkTo = useCallback((extra) => {
+    const params = new URLSearchParams(location.search);
+    Object.entries(extra).forEach(([k, v]) => {
+      if (v == null || v === "" || v === "Todos") params.delete(k);
+      else params.set(k, v);
+    });
+    return { pathname: "/dashboard", search: params.toString() ? `?${params.toString()}` : "" };
+  }, [location.search]);
 
-  const hasActiveFilters = filters.department !== "Todos" || filters.escribano !== "Todos" || filters.status !== "Todos" || filters.dateFrom || filters.dateTo;
+  const hasActiveFilters = state.departamento !== "Todos" || state.escribano !== "Todos" || state.estado !== "Todos" || state.desde || state.hasta;
 
   // ── Apply filters ──
   const filteredData = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return data.filter(item => {
-      if (filters.department !== "Todos" && item.Departamento !== filters.department) return false;
-      if (filters.escribano !== "Todos" && getEscribano(item) !== filters.escribano) return false;
-      if (filters.status !== "Todos") {
+      if (state.departamento !== "Todos" && item.Departamento !== state.departamento) return false;
+      if (state.escribano !== "Todos" && getEscribano(item) !== state.escribano) return false;
+      if (state.estado !== "Todos") {
         const est = (item.Estado || item.estado || "").toString().trim();
-        if (est !== filters.status) return false;
+        if (est !== state.estado) return false;
       }
-      if (filters.dateFrom || filters.dateTo) {
+      if (state.desde || state.hasta) {
         const fechaFirma = parseDate(item["Fecha de Firma"]);
         if (!fechaFirma) return false;
-        if (filters.dateFrom && fechaFirma < new Date(filters.dateFrom)) return false;
-        if (filters.dateTo && fechaFirma > new Date(filters.dateTo)) return false;
+        if (state.desde && fechaFirma < new Date(state.desde)) return false;
+        if (state.hasta && fechaFirma > new Date(state.hasta)) return false;
       }
       return true;
     });
-  }, [data, filters]);
+  }, [data, state]);
 
   // ── Dropdown options (from full data) ──
   const { departments, escribanos, statuses } = useMemo(() => {
@@ -500,11 +447,11 @@ export default function DashboardTab() {
             <button
               key={tab.key}
               className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
-                activeTab === tab.key
+                state.tab === tab.key
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
               }`}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => set({ tab: tab.key })}
             >
               {tab.label}
             </button>
@@ -519,7 +466,7 @@ export default function DashboardTab() {
         </button>
       </div>
 
-      {activeTab === "resumen" ? (
+      {state.tab === "resumen" ? (
         <>
           {/* ── Dashboard Filters ── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
@@ -528,8 +475,8 @@ export default function DashboardTab() {
 
           <select
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.department}
-            onChange={e => setFilter("department", e.target.value)}
+            value={state.departamento}
+            onChange={e => set({ departamento: e.target.value })}
           >
             <option value="Todos">Todos los departamentos</option>
             {departments.map(d => <option key={d} value={d}>{d}</option>)}
@@ -537,8 +484,8 @@ export default function DashboardTab() {
 
           <select
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.escribano}
-            onChange={e => setFilter("escribano", e.target.value)}
+            value={state.escribano}
+            onChange={e => set({ escribano: e.target.value })}
           >
             <option value="Todos">Todos los escribanos</option>
             {escribanos.map(e => <option key={e} value={e}>{e}</option>)}
@@ -546,8 +493,8 @@ export default function DashboardTab() {
 
           <select
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.status}
-            onChange={e => setFilter("status", e.target.value)}
+            value={state.estado}
+            onChange={e => set({ estado: e.target.value })}
           >
             <option value="Todos">Todos los estados</option>
             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
@@ -556,20 +503,20 @@ export default function DashboardTab() {
           <input
             type="date"
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.dateFrom}
-            onChange={e => setFilter("dateFrom", e.target.value)}
+            value={state.desde}
+            onChange={e => set({ desde: e.target.value })}
             placeholder="Desde"
           />
           <input
             type="date"
             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filters.dateTo}
-            onChange={e => setFilter("dateTo", e.target.value)}
+            value={state.hasta}
+            onChange={e => set({ hasta: e.target.value })}
             placeholder="Hasta"
           />
 
           <button
-            onClick={clearFilters}
+            onClick={reset}
             disabled={!hasActiveFilters}
             className="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:bg-red-50 enabled:hover:text-red-700 enabled:hover:border-red-200 text-slate-500 border-slate-200 bg-white"
           >
@@ -584,54 +531,62 @@ export default function DashboardTab() {
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard
-          label="Total Escrituraciones"
-          value={kpis.total}
-          color="#3b82f6"
-          bg="from-blue-50 to-blue-100/50"
-          delta={kpis.ingresosEsteMes}
-          deltaLabel="ingresos este mes"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>
-            </svg>
-          }
-        />
-        <KPICard
-          label="En Trámite"
-          value={kpis.enProceso}
-          color="#f59e0b"
-          bg="from-amber-50 to-amber-100/50"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-            </svg>
-          }
-        />
-        <KPICard
-          label="Finalizadas"
-          value={kpis.finalizadas}
-          color="#10b981"
-          bg="from-emerald-50 to-emerald-100/50"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>
-            </svg>
-          }
-        />
-        <KPICard
-          label="Firmas este Mes"
-          value={kpis.finalizadasEsteMes}
-          color="#8b5cf6"
-          bg="from-violet-50 to-violet-100/50"
-          delta={kpis.deltaFirmas}
-          deltaLabel="vs mes anterior"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-          }
-        />
+        <Link to={linkTo({ tab: "resumen" })} className="block">
+          <KPICard
+            label="Total Escrituraciones"
+            value={kpis.total}
+            color="#3b82f6"
+            bg="from-blue-50 to-blue-100/50"
+            delta={kpis.ingresosEsteMes}
+            deltaLabel="ingresos este mes"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>
+              </svg>
+            }
+          />
+        </Link>
+        <Link to={linkTo({ tab: "resumen", estado: "En Trámite" })} className="block">
+          <KPICard
+            label="En Trámite"
+            value={kpis.enProceso}
+            color="#f59e0b"
+            bg="from-amber-50 to-amber-100/50"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+              </svg>
+            }
+          />
+        </Link>
+        <Link to={linkTo({ tab: "resumen" })} className="block">
+          <KPICard
+            label="Finalizadas"
+            value={kpis.finalizadas}
+            color="#10b981"
+            bg="from-emerald-50 to-emerald-100/50"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>
+              </svg>
+            }
+          />
+        </Link>
+        <Link to={linkTo({ tab: "resumen" })} className="block">
+          <KPICard
+            label="Firmas este Mes"
+            value={kpis.finalizadasEsteMes}
+            color="#8b5cf6"
+            bg="from-violet-50 to-violet-100/50"
+            delta={kpis.deltaFirmas}
+            deltaLabel="vs mes anterior"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            }
+          />
+        </Link>
       </div>
 
       {/* ── Row: Chart + Estado breakdown ── */}
@@ -673,18 +628,12 @@ export default function DashboardTab() {
               { label: "No Retiradas", count: kpis.estadoCount["No Retiradas"] || 0, color: "#94a3b8" },
             ].filter(s => s.count > 0).map(s => {
               const pct = kpis.total ? Math.round((s.count / kpis.total) * 100) : 0;
-              const isActive = filters.status === s.label;
-              const handleClick = () => {
-                setFilter("status", isActive ? "Todos" : s.label);
-              };
+              const isActive = state.estado === s.label;
               return (
-                <div
+                <Link
                   key={s.label}
-                  role="button"
-                  tabIndex={0}
-                  onClick={handleClick}
-                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
-                  className={`cursor-pointer rounded-lg p-1.5 -m-1.5 transition-colors ${isActive ? "bg-slate-100" : "hover:bg-slate-50"}`}
+                  to={linkTo({ estado: isActive ? "Todos" : s.label, tab: "resumen" })}
+                  className={`block rounded-lg p-1.5 -m-1.5 transition-colors ${isActive ? "bg-slate-100" : "hover:bg-slate-50"}`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
@@ -696,10 +645,10 @@ export default function DashboardTab() {
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{ width: `${pct}%`, backgroundColor: s.color, opacity: filters.status && !isActive ? 0.3 : 1 }}
+                      style={{ width: `${pct}%`, backgroundColor: s.color, opacity: state.estado && !isActive ? 0.3 : 1 }}
                     />
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
