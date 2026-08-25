@@ -277,6 +277,9 @@ export default function DashboardTab() {
       const n = Number(val);
       if (isNaN(n) || n <= ESCROW_ESPERADO) return;
 
+      const est = (item.Estado || item.estado || "").toString().trim();
+      if (est !== "En Trámite") return;
+
       const nombre = getEscribano(item);
       if (!nombre) return;
       const beneficiario = item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? "—";
