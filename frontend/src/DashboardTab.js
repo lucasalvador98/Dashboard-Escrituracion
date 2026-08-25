@@ -908,9 +908,9 @@ export default function DashboardTab() {
                 )}
 
                 {/* Master-detail: sidebar escribanos + tabla */}
-                <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4">
                   {/* Sidebar de escribanos */}
-                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[300px] lg:max-h-[480px]">
+                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[300px] lg:max-h-[480px] lg:mt-0">
                     <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Escribanos</span>
                     </div>
