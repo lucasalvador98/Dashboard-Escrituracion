@@ -12,58 +12,6 @@ import {
   diffClass,
 } from "../lib/deadlines";
 
-// --- parseMonto (legacy copy, source tab removed) ---
-function parseMonto(m) {
-  if (m == null) return 0;
-  if (typeof m === "number") return m;
-  let s = String(m).trim();
-  s = s.replace(/[^\d,.-]/g, "");
-  const lastComma = s.lastIndexOf(",");
-  const lastDot = s.lastIndexOf(".");
-  if (lastComma > lastDot) {
-    s = s.replace(/\./g, "").replace(",", ".");
-  } else if (lastDot > lastComma) {
-    s = s.replace(/,/g, "");
-  } else {
-    s = s.replace(/[,.]/g, "");
-  }
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
-}
-
-describe("parseMonto", () => {
-  test("null/undefined devuelve 0", () => {
-    expect(parseMonto(null)).toBe(0);
-    expect(parseMonto(undefined)).toBe(0);
-  });
-
-  test("número directo se pasa igual", () => {
-    expect(parseMonto(1500.5)).toBe(1500.5);
-    expect(parseMonto(0)).toBe(0);
-  });
-
-  test("formato argentino con punto miles y coma decimal", () => {
-    expect(parseMonto("$1.500,50")).toBe(1500.50);
-    expect(parseMonto("10.000,00")).toBe(10000);
-  });
-
-  test("formato US con punto decimal", () => {
-    expect(parseMonto("1,500.50")).toBe(1500.50);
-    expect(parseMonto("1500.50")).toBe(1500.50);
-  });
-
-  test("formato sin separadores", () => {
-    expect(parseMonto("1500")).toBe(1500);
-    expect(parseMonto("0")).toBe(0);
-  });
-
-  test("string vacío o basura devuelve 0", () => {
-    expect(parseMonto("")).toBe(0);
-    expect(parseMonto("N/A")).toBe(0);
-    expect(parseMonto("texto")).toBe(0);
-  });
-});
-
 // --- diffClass (shared semaphore, from deadlines lib) ---
 describe("diffClass (shared semaphore)", () => {
   test("invalid values are gray", () => {
