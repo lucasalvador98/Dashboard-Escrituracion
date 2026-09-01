@@ -73,8 +73,8 @@ describe("router shell", () => {
 
   it("renders the shared layout with an active nav link on a deep link", () => {
     renderApp("/escrituracion");
-    expect(container.querySelector("aside.app-sidebar")).not.toBeNull();
-    expect(container.querySelector("footer.app-footer")).not.toBeNull();
+    expect(container.querySelector('[data-testid="app-sidebar"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="app-footer"]')).not.toBeNull();
     const link = container.querySelector('a[href="/escrituracion"]');
     expect(link).not.toBeNull();
     expect(link.getAttribute("aria-current")).toBe("page");
