@@ -170,7 +170,7 @@ def exportar_excel_stock(
         sheet_url = "https://docs.google.com/spreadsheets/d/1V9vXwMQJjd4kLdJZQncOSoWggQk8S7tBKxbOSEIUoQ8/edit#gid=1593263408"
         datos = cargar_datos(sheet_url, _get_creds())
 
-        estados_validos = ["Finalizada sin Entregar", "Entregada"]
+        estados_validos = ["Finalizada sin Entregar"]
         datos = [d for d in datos if d.get("Estado") in estados_validos]
 
         if departamento:
@@ -261,7 +261,7 @@ def exportar_planilla(
 ):
     """
     Generic endpoint for exporting stock planillas by format.
-    - formato=finalizadas: Finalizada sin Entregar + Entregada
+    - formato=finalizadas: Finalizada sin Entregar
     - formato=en-tramite: En Trámite
     - formato=firma: En Trámite with firma-specific fields
     """
@@ -270,7 +270,7 @@ def exportar_planilla(
         datos = cargar_datos(sheet_url, _get_creds())
 
         if formato == "finalizadas":
-            datos = [d for d in datos if d.get("Estado") in ("Finalizada sin Entregar", "Entregada")]
+            datos = [d for d in datos if d.get("Estado") == "Finalizada sin Entregar"]
         elif formato == "en-tramite":
             datos = [d for d in datos if (d.get("Estado") or "").strip() == "En Trámite"]
         elif formato == "firma":

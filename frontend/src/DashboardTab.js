@@ -108,8 +108,8 @@ export default function DashboardTab() {
       if (state.desde || state.hasta) {
         const fechaFirma = parseDate(item["Fecha de Firma"]);
         if (!fechaFirma) return false;
-        if (state.desde && fechaFirma < new Date(state.desde)) return false;
-        if (state.hasta && fechaFirma > new Date(state.hasta)) return false;
+        if (state.desde && fechaFirma < parseDate(state.desde)) return false;
+        if (state.hasta && fechaFirma > parseDate(state.hasta)) return false;
       }
       return true;
     });
@@ -272,13 +272,16 @@ export default function DashboardTab() {
     const byEscribano = {};
 
     filteredData.forEach(item => {
-      const val = item.diferencia_aceptacion_firma;
-      if (val === "N/A" || val == null) return;
-      const n = Number(val);
-      if (isNaN(n) || n <= ESCROW_ESPERADO) return;
-
       const est = (item.Estado || item.estado || "").toString().trim();
       if (est !== "En Trámite") return;
+
+      const acep = item["Fecha de Aceptacion"];
+      if (!acep || acep === "N/A") return;
+
+      const firma = item["Fecha de Firma"];
+      const firmaDate = firma && firma !== "N/A" ? firma : new Date().toISOString().slice(0, 10);
+      const n = contarDiasHabiles(acep, firmaDate);
+      if (n === 0 || n <= ESCROW_ESPERADO) return;
 
       const nombre = getEscribano(item);
       if (!nombre) return;

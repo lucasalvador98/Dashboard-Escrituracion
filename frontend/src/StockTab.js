@@ -7,7 +7,6 @@ const API_URL = API_CONFIG.BASE_URL_BACKEND;
 
 const ESTADO_FORMATO = {
   "Finalizada sin Entregar": "finalizadas",
-  Entregada: "finalizadas",
   "En Trámite": "en-tramite",
 };
 
