@@ -7,6 +7,7 @@
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.14.0",
     "@mui/material": "^5.14.0",
+    "@mui/x-data-grid": "^6.20.4",
     "@tanstack/react-query": "^5.28.0",
     "@tanstack/react-table": "^8.17.0",
     "autoprefixer": "^10.4.0",

@@ -85,6 +85,20 @@ body {
   color: var(--color-text);
 }
 
+/* Dark mode support for any remaining Tailwind dark: utilities (tailwind darkMode: "class").
+   These will be removed in P7 when the MUI theme takes over entirely. */
+.dark body {
+  background-color: #0f0e13;
+  color: #e2e8f0;
+}
+.dark .app-root,
+.dark .app-sidebar,
+.dark .app-header,
+.dark .app-footer {
+  background-color: #171422;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
 /* Layout principal */
 .app-root {
   @apply flex h-screen bg-slate-50;

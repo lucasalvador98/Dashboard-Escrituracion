@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeModeProvider } from "./theme/ThemeContext";
 import AppLayout from "./AppLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardTab from "./DashboardTab";
@@ -73,9 +74,11 @@ export function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <ThemeModeProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </ThemeModeProvider>
     </QueryClientProvider>
   );
 }
