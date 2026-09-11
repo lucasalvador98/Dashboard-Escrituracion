@@ -5,26 +5,43 @@ import useUrlState from "./hooks/useUrlState";
 import { parseDate, contarDiasHabiles, diffClass, INTERVALS } from "./lib/deadlines";
 import SlidePanel from "./components/SlidePanel";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useTheme, alpha } from "@mui/material/styles";
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import LinearProgress from "@mui/material/LinearProgress";
 
 function StatusDot({ color }) {
   return (
-    <span
-      className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
-      style={{ backgroundColor: color }}
+    <Box
+      sx={{
+        width: 10,
+        height: 10,
+        borderRadius: "50%",
+        flexShrink: 0,
+        backgroundColor: color,
+      }}
     />
   );
 }
 
+// Small count chip for the interval semaphore (green/yellow/red counts). Uses
+// MUI semantic colors so the counts stay legible in both themes (INV-2).
 function CountChip({ color, count, label }) {
   if (!count) return null;
   return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold"
-      style={{ backgroundColor: `${color}1a`, color }}
+    <Chip
+      size="small"
+      color={color}
+      label={count}
       title={label}
-    >
-      {count}
-    </span>
+      sx={{ height: 20, minWidth: 26, fontWeight: 700, fontSize: 11 }}
+    />
   );
 }
 
@@ -71,6 +88,7 @@ function downloadCSV(filename, content) {
 // ─── Alerts computation ───────────────────────────────────────────────────────
 
 export default function DashboardTab() {
+  const theme = useTheme();
   const { data, loading, error } = useDataLoader("escrituracion");
   const location = useLocation();
   const { state, set, reset } = useUrlState({
@@ -448,162 +466,196 @@ export default function DashboardTab() {
     <div className="space-y-6">
 
       {/* ── Tab Switcher ── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex bg-slate-100 rounded-lg p-0.5 w-fit">
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1.5 }}>
+        <Box sx={{ display: "inline-flex", bgcolor: "action.hover", borderRadius: 2, p: 0.25, width: "fit-content" }}>
           {[
             { key: "resumen", label: "Resumen" },
             { key: "demorados", label: `Demorados (${demorados.reduce((s, e) => s + e.items.length, 0)})` },
           ].map(tab => (
-            <button
+            <Button
               key={tab.key}
-              className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
-                state.tab === tab.key
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
               onClick={() => set({ tab: tab.key })}
+              sx={{
+                px: 2,
+                py: 0.75,
+                fontSize: 14,
+                fontWeight: 700,
+                minWidth: 0,
+                color: state.tab === tab.key ? "text.primary" : "text.secondary",
+                bgcolor: state.tab === tab.key ? "background.paper" : "transparent",
+                boxShadow: state.tab === tab.key ? 1 : 0,
+                "&:hover": {
+                  bgcolor: state.tab === tab.key ? "background.paper" : "action.selected",
+                  color: "text.primary",
+                },
+              }}
             >
               {tab.label}
-            </button>
+            </Button>
           ))}
-        </div>
-        <button
+        </Box>
+        <Button
           onClick={exportResumen}
-          className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors"
+          size="small"
+          variant="outlined"
+          color="primary"
           title="Exportar KPIs, semáforo y demorados a CSV"
+          sx={{ fontSize: 12, fontWeight: 600 }}
         >
           ⬇ Exportar resumen
-        </button>
-      </div>
+        </Button>
+      </Box>
 
       {state.tab === "resumen" ? (
         <>
           {/* ── Dashboard Filters ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtros</span>
+      <Paper elevation={0} sx={{ p: 2, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Filtros
+          </Typography>
 
-          <select
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          <TextField
+            id="dashboard-filter-departamento"
+            select
+            size="small"
             value={state.departamento}
             onChange={e => set({ departamento: e.target.value })}
+            SelectProps={{ native: true, inputProps: { "aria-label": "Departamento" } }}
+            sx={{ minWidth: 190 }}
           >
             <option value="Todos">Todos los departamentos</option>
             {departments.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
+          </TextField>
 
-          <select
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          <TextField
+            id="dashboard-filter-escribano"
+            select
+            size="small"
             value={state.escribano}
             onChange={e => set({ escribano: e.target.value })}
+            SelectProps={{ native: true, inputProps: { "aria-label": "Escribano" } }}
+            sx={{ minWidth: 190 }}
           >
             <option value="Todos">Todos los escribanos</option>
             {escribanos.map(e => <option key={e} value={e}>{e}</option>)}
-          </select>
+          </TextField>
 
-          <select
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          <TextField
+            id="dashboard-filter-estado"
+            select
+            size="small"
             value={state.estado}
             onChange={e => set({ estado: e.target.value })}
+            SelectProps={{ native: true, inputProps: { "aria-label": "Estado" } }}
+            sx={{ minWidth: 170 }}
           >
             <option value="Todos">Todos los estados</option>
             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          </TextField>
 
-          <input
+          <TextField
+            id="dashboard-filter-desde"
             type="date"
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            size="small"
             value={state.desde}
             onChange={e => set({ desde: e.target.value })}
-            placeholder="Desde"
+            inputProps={{ "aria-label": "Desde" }}
+            sx={{ width: 160 }}
           />
-          <input
+          <TextField
+            id="dashboard-filter-hasta"
             type="date"
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            size="small"
             value={state.hasta}
             onChange={e => set({ hasta: e.target.value })}
-            placeholder="Hasta"
+            inputProps={{ "aria-label": "Hasta" }}
+            sx={{ width: 160 }}
           />
 
-          <button
+          <Button
             onClick={reset}
             disabled={!hasActiveFilters}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:bg-red-50 enabled:hover:text-red-700 enabled:hover:border-red-200 text-slate-500 border-slate-200 bg-white"
+            size="small"
+            variant="outlined"
+            sx={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "text.secondary",
+              borderColor: "divider",
+              "&:hover": {
+                color: "error.main",
+                borderColor: "error.light",
+                bgcolor: alpha(theme.palette.error.main, 0.04),
+              },
+            }}
           >
             Limpiar ×
-          </button>
+          </Button>
 
-          <span className="text-[11px] text-slate-400 ml-auto">
+          <Typography variant="caption" sx={{ color: "text.secondary", ml: "auto" }}>
             {filteredData.length} de {data.length} registros
-          </span>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Paper>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link to={linkTo({ tab: "resumen" })} className="block">
-          <KPICard
-            label="Total Escrituraciones"
-            value={kpis.total}
-            color="#3b82f6"
-            bg="from-blue-50 to-blue-100/50"
-            delta={kpis.ingresosEsteMes}
-            deltaLabel="ingresos este mes"
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>
-              </svg>
-            }
-          />
-        </Link>
-        <Link to={linkTo({ tab: "resumen", estado: "En Trámite" })} className="block">
-          <KPICard
-            label="En Trámite"
-            value={kpis.enProceso}
-            color="#f59e0b"
-            bg="from-amber-50 to-amber-100/50"
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-              </svg>
-            }
-          />
-        </Link>
-        <Link to={linkTo({ tab: "resumen" })} className="block">
-          <KPICard
-            label="Finalizadas"
-            value={kpis.finalizadas}
-            color="#10b981"
-            bg="from-emerald-50 to-emerald-100/50"
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>
-              </svg>
-            }
-          />
-        </Link>
-        <Link to={linkTo({ tab: "resumen" })} className="block">
-          <KPICard
-            label="Firmas este Mes"
-            value={kpis.finalizadasEsteMes}
-            color="#8b5cf6"
-            bg="from-violet-50 to-violet-100/50"
-            delta={kpis.deltaFirmas}
-            deltaLabel="vs mes anterior"
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            }
-          />
-        </Link>
-      </div>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }, gap: 2 }}>
+        <KPICard
+          to={linkTo({ tab: "resumen" })}
+          label="Total Escrituraciones"
+          value={kpis.total}
+          color="#3b82f6"
+          delta={kpis.ingresosEsteMes}
+          deltaLabel="ingresos este mes"
+          icon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>
+            </svg>
+          }
+        />
+        <KPICard
+          to={linkTo({ tab: "resumen", estado: "En Trámite" })}
+          label="En Trámite"
+          value={kpis.enProceso}
+          color="#f59e0b"
+          icon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+            </svg>
+          }
+        />
+        <KPICard
+          to={linkTo({ tab: "resumen" })}
+          label="Finalizadas"
+          value={kpis.finalizadas}
+          color="#10b981"
+          icon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>
+            </svg>
+          }
+        />
+        <KPICard
+          to={linkTo({ tab: "resumen" })}
+          label="Firmas este Mes"
+          value={kpis.finalizadasEsteMes}
+          color="#8b5cf6"
+          delta={kpis.deltaFirmas}
+          deltaLabel="vs mes anterior"
+          icon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          }
+        />
+      </Box>
 
       {/* ── Row: Chart + Estado breakdown ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "repeat(3, 1fr)" }, gap: 2.5 }}>
         {/* Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Ingresos por Mes</h3>
+        <Paper elevation={0} sx={{ gridColumn: { lg: "span 2" }, p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+          <Typography component="h3" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary", textTransform: "uppercase", letterSpacing: "0.06em", mb: 2 }}>Ingresos por Mes</Typography>
           {kpis.chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={kpis.chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
@@ -619,16 +671,16 @@ export default function DashboardTab() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[260px] text-slate-400 text-sm">
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: 260, color: "text.secondary", fontSize: 14 }}>
               Sin datos para graficar
-            </div>
+            </Box>
           )}
-        </div>
+        </Paper>
 
         {/* Estado breakdown */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Distribución por Estado</h3>
-          <div className="space-y-3">
+        <Paper elevation={0} sx={{ p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+          <Typography component="h3" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary", textTransform: "uppercase", letterSpacing: "0.06em", mb: 2 }}>Distribución por Estado</Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             {[
               { label: "En Trámite", count: kpis.enProceso, color: "#f59e0b" },
               { label: "Finalizada sin Entregar", count: kpis.estadoCount["Finalizada sin Entregar"] || 0, color: "#6366f1" },
@@ -640,54 +692,72 @@ export default function DashboardTab() {
               const pct = kpis.total ? Math.round((s.count / kpis.total) * 100) : 0;
               const isActive = state.estado === s.label;
               return (
-                <Link
+                <Box
                   key={s.label}
+                  component={Link}
                   to={linkTo({ estado: isActive ? "Todos" : s.label, tab: "resumen" })}
-                  className={`block rounded-lg p-1.5 -m-1.5 transition-colors ${isActive ? "bg-slate-100" : "hover:bg-slate-50"}`}
+                  sx={{
+                    display: "block",
+                    borderRadius: 2,
+                    p: 0.75,
+                    m: -0.75,
+                    textDecoration: "none",
+                    bgcolor: isActive ? "action.selected" : "transparent",
+                    transition: "background-color .15s",
+                    "&:hover": { bgcolor: isActive ? "action.selected" : "action.hover" },
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <StatusDot color={s.color} />
-                      <span className={`text-xs font-semibold ${isActive ? "text-slate-900" : "text-slate-600"}`}>{s.label}</span>
-                    </div>
-                    <span className="text-xs font-bold text-slate-800">{s.count}</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{ width: `${pct}%`, backgroundColor: s.color, opacity: state.estado && !isActive ? 0.3 : 1 }}
-                    />
-                  </div>
-                </Link>
+                      <Typography sx={{ fontSize: 12, fontWeight: 600, color: isActive ? "text.primary" : "text.secondary" }}>{s.label}</Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: "text.primary" }}>{s.count}</Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={pct}
+                    sx={{
+                      height: 8,
+                      borderRadius: 4,
+                      bgcolor: "action.hover",
+                      "& .MuiLinearProgress-bar": {
+                        backgroundColor: s.color,
+                        opacity: state.estado && !isActive ? 0.3 : 1,
+                        transition: "width .7s ease-out, opacity .3s",
+                      },
+                    }}
+                  />
+                </Box>
               );
             })}
-          </div>
+          </Box>
 
           {/* Top escribanos */}
           {kpis.topEscribanos.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-slate-100">
-              <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Top Escribanos</h4>
-              <div className="space-y-2">
+            <Box sx={{ mt: 3, pt: 2, borderTop: "1px solid", borderColor: "divider" }}>
+              <Typography component="h4" sx={{ fontSize: 11, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5 }}>Top Escribanos</Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {kpis.topEscribanos.map(([nombre, count], i) => (
-                  <div key={nombre} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[10px] font-bold text-slate-300 w-4">{i + 1}</span>
-                      <span className="text-xs font-medium text-slate-700 truncate">{nombre}</span>
-                    </div>
-                    <span className="text-xs font-bold text-slate-900 ml-2">{count}</span>
-                  </div>
+                  <Box key={nombre} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: 10, fontWeight: 700, color: "text.disabled", width: 16 }}>{i + 1}</Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 500, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: "text.primary", ml: 1 }}>{count}</Typography>
+                  </Box>
                 ))}
-              </div>
-            </div>
+              </Box>
+            </Box>
           )}
-        </div>
-      </div>
+        </Paper>
+      </Box>
 
       {/* ── Row: Tendencia de demoras + Semáforo ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "repeat(3, 1fr)" }, gap: 2.5 }}>
         {/* Tendencia de demoras */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Tendencia de Demoras (Acep→Firma)</h3>
+        <Paper elevation={0} sx={{ gridColumn: { lg: "span 2" }, p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+          <Typography component="h3" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary", textTransform: "uppercase", letterSpacing: "0.06em", mb: 2 }}>Tendencia de Demoras (Acep→Firma)</Typography>
           {demoraTrend.length > 0 ? (
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={demoraTrend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
@@ -702,44 +772,42 @@ export default function DashboardTab() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[240px] text-slate-400 text-sm">
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: 240, color: "text.secondary", fontSize: 14 }}>
               Sin datos suficientes para graficar la tendencia
-            </div>
+            </Box>
           )}
-        </div>
+        </Paper>
 
         {/* Semáforo global */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Semáforo de Plazos</h3>
-          <div className="space-y-3">
+        <Paper elevation={0} sx={{ p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+          <Typography component="h3" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary", textTransform: "uppercase", letterSpacing: "0.06em", mb: 2 }}>Semáforo de Plazos</Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             {semaforo.map(iv => (
-              <div key={iv.key} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                <div className="min-w-0 mr-3">
-                  <div className="text-xs font-bold text-slate-700">{iv.label}</div>
-                  <div className="text-[10px] text-slate-400">esperado {iv.esperado}d</div>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <CountChip color="#10b981" count={iv.green} label="ok" />
-                  <CountChip color="#f59e0b" count={iv.yellow} label="alerta" />
-                  <CountChip color="#ef4444" count={iv.red} label="demora" />
-                  <span className={`ml-1 text-[11px] font-bold ${iv.pctRed > 30 ? "text-red-600" : "text-slate-400"}`}>{iv.pctRed}%</span>
-                </div>
-              </div>
+              <Box key={iv.key} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1, borderBottom: "1px solid", borderColor: "divider", "&:last-of-type": { borderBottom: 0 } }}>
+                <Box sx={{ minWidth: 0, mr: 1.5 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: "text.primary" }}>{iv.label}</Typography>
+                  <Typography sx={{ fontSize: 10, color: "text.secondary" }}>esperado {iv.esperado}d</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
+                  <CountChip color="success" count={iv.green} label="ok" />
+                  <CountChip color="warning" count={iv.yellow} label="alerta" />
+                  <CountChip color="error" count={iv.red} label="demora" />
+                  <Typography sx={{ ml: 0.5, fontSize: 11, fontWeight: 700, color: iv.pctRed > 30 ? "error.main" : "text.secondary" }}>{iv.pctRed}%</Typography>
+                </Box>
+              </Box>
             ))}
-          </div>
-        </div>
-      </div>
+          </Box>
+        </Paper>
+      </Box>
 
       {/* ── Próximas Firmas ── */}
       {kpis.proximasFirmas.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Próximas Firmas</h3>
-            <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-              {kpis.proximasFirmas.length} programadas
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Paper elevation={0} sx={{ p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+            <Typography component="h3" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary", textTransform: "uppercase", letterSpacing: "0.06em" }}>Próximas Firmas</Typography>
+            <Chip size="small" label={`${kpis.proximasFirmas.length} programadas`} sx={{ bgcolor: "action.hover", color: "text.secondary", fontWeight: 600 }} />
+          </Box>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }, gap: 1.5 }}>
             {kpis.proximasFirmas.map((item, idx) => {
               const nombre = item.Beneficiarios ?? item.Beneficiario ?? item["APELLIDO Y NOMBRE"] ?? "—";
               const fechaRaw = item["Fecha de Firma"];
@@ -753,51 +821,50 @@ export default function DashboardTab() {
               const enAlerta = !enRiesgo && acepFirmaDias !== null && acepFirmaDias > 15;
 
               return (
-                <div
+                <Card
                   key={idx}
-                  className={`group relative bg-gradient-to-br from-slate-50 to-white border rounded-xl p-4 transition-all duration-200 ${
-                    enRiesgo
-                      ? "border-red-300 hover:border-red-400 hover:shadow-md"
-                      : enAlerta
-                        ? "border-amber-200 hover:border-amber-300 hover:shadow-md"
-                        : "border-slate-200/60 hover:border-blue-300 hover:shadow-md"
-                  }`}
+                  variant="outlined"
+                  elevation={0}
+                  sx={{
+                    borderColor: enRiesgo ? "error.light" : enAlerta ? "warning.light" : "divider",
+                    transition: "border-color .2s, box-shadow .2s",
+                    "&:hover": {
+                      boxShadow: 3,
+                      borderColor: enRiesgo ? "error.main" : enAlerta ? "warning.main" : "primary.light",
+                    },
+                  }}
                 >
-                  <div className="flex items-start justify-between mb-2 gap-1">
-                    <span className="text-[10px] font-bold text-slate-300">#{idx + 1}</span>
-                    <div className="flex items-center gap-1">
-                      {diasRestantes !== null && diasRestantes <= 7 && diasRestantes >= 0 && (
-                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
-                          {diasRestantes === 0 ? "Hoy" : `${diasRestantes}d`}
-                        </span>
+                  <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                    <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 1, gap: 0.5 }}>
+                      <Typography sx={{ fontSize: 10, fontWeight: 700, color: "text.disabled" }}>#{idx + 1}</Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        {diasRestantes !== null && diasRestantes <= 7 && diasRestantes >= 0 && (
+                          <Chip size="small" color="warning" label={diasRestantes === 0 ? "Hoy" : `${diasRestantes}d`} sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+                        )}
+                        {enRiesgo && (
+                          <Chip size="small" color="error" label="Riesgo" title={`Acep→Firma: ${acepFirmaDias}d hábiles (> 20d)`} sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+                        )}
+                        {enAlerta && (
+                          <Chip size="small" color="warning" label="Alerta" title={`Acep→Firma: ${acepFirmaDias}d hábiles`} sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+                        )}
+                      </Box>
+                    </Box>
+                    <Typography sx={{ fontSize: 14, fontWeight: 700, color: "text.primary", lineHeight: 1.2, mb: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</Typography>
+                    <Typography sx={{ fontSize: 12, color: "text.secondary", fontFamily: "monospace" }}>{item.DNI || "—"}</Typography>
+                    <Box sx={{ mt: 1.5, pt: 1, borderTop: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 600, color: "text.secondary" }}>{fechaRaw}</Typography>
+                      {acepFirmaDias !== null && (
+                        <Typography sx={{ fontSize: 10, fontWeight: 700, color: enRiesgo ? "error.main" : enAlerta ? "warning.main" : "text.secondary" }}>
+                          Acep→Firma: {acepFirmaDias}d
+                        </Typography>
                       )}
-                      {enRiesgo && (
-                        <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full" title={`Acep→Firma: ${acepFirmaDias}d hábiles (> 20d)`}>
-                          Riesgo
-                        </span>
-                      )}
-                      {enAlerta && (
-                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full" title={`Acep→Firma: ${acepFirmaDias}d hábiles`}>
-                          Alerta
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-sm font-bold text-slate-800 leading-tight mb-1 truncate">{nombre}</p>
-                  <p className="text-xs text-slate-500 font-mono">{item.DNI || "—"}</p>
-                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <p className="text-xs font-semibold text-slate-600">{fechaRaw}</p>
-                    {acepFirmaDias !== null && (
-                      <p className={`text-[10px] font-bold ${enRiesgo ? "text-red-600" : enAlerta ? "text-amber-600" : "text-slate-400"}`}>
-                        Acep→Firma: {acepFirmaDias}d
-                      </p>
-                    )}
-                  </div>
-                </div>
+                    </Box>
+                  </CardContent>
+                </Card>
               );
             })}
-          </div>
-        </div>
+          </Box>
+        </Paper>
       )}
 
         </>
@@ -1167,36 +1234,56 @@ function DemoradoDetailPanel({ item }) {
   );
 }
 
-function KPICard({ label, value, color, bg, icon, delta, deltaLabel }) {
+function KPICard({ to, label, value, color, icon, delta, deltaLabel }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const deltaVal = delta ?? null;
   const deltaUp = deltaVal > 0;
   const deltaDown = deltaVal < 0;
+  // KPI cards are navigation links (deep-link into the dashboard with filters).
+  // `component={Link}` keeps a real <a href> so dashboard-widgets assertions hold.
+  const linkProps = to ? { component: Link, to } : {};
   return (
-    <div className={`relative bg-gradient-to-br ${bg} rounded-2xl p-5 border border-white/60 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden`}>
-      <div className="flex items-start justify-between mb-3">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: `${color}18` }}
-        >
-          {icon}
-        </div>
-      </div>
-      <div className="text-3xl font-black tracking-tight mb-0.5" style={{ color }}>
-        {typeof value === "number" ? value.toLocaleString("es-AR") : value}
-      </div>
-      <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</div>
-      {deltaVal !== 0 && (
-        <div className="mt-1.5 flex items-center gap-1">
-          <span className={`text-[11px] font-bold ${deltaUp ? "text-emerald-600" : deltaDown ? "text-red-600" : "text-slate-400"}`}>
-            {deltaUp ? "▲" : deltaDown ? "▼" : "●"} {deltaVal > 0 ? "+" : ""}{deltaVal}
-          </span>
-          <span className="text-[11px] text-slate-400">{deltaLabel}</span>
-        </div>
-      )}
-      <div
-        className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-[0.07]"
-        style={{ backgroundColor: color }}
-      />
-    </div>
+    <Card
+      {...linkProps}
+      elevation={1}
+      sx={{
+        position: "relative",
+        height: "100%",
+        overflow: "hidden",
+        textDecoration: "none",
+        color: "inherit",
+        border: "1px solid",
+        borderColor: "divider",
+        background: isDark
+          ? alpha(color, 0.12)
+          : `linear-gradient(135deg, ${alpha(color, 0.08)}, ${alpha(color, 0.03)})`,
+        transition: "box-shadow .3s, transform .2s",
+        "&:hover": { boxShadow: 4 },
+      }}
+    >
+      <CardContent>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 1.5 }}>
+          <Box sx={{ width: 40, height: 40, borderRadius: 2.5, display: "flex", alignItems: "center", justifyContent: "center", bgcolor: alpha(color, 0.1) }}>
+            {icon}
+          </Box>
+        </Box>
+        <Typography component="div" sx={{ fontSize: 30, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.1, mb: 0.25, color }}>
+          {typeof value === "number" ? value.toLocaleString("es-AR") : value}
+        </Typography>
+        <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {label}
+        </Typography>
+        {deltaVal !== 0 && (
+          <Box sx={{ mt: 0.75, display: "flex", alignItems: "center", gap: 0.5 }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 700, color: deltaUp ? "success.main" : deltaDown ? "error.main" : "text.disabled" }}>
+              {deltaUp ? "▲" : deltaDown ? "▼" : "●"} {deltaVal > 0 ? "+" : ""}{deltaVal}
+            </Typography>
+            <Typography sx={{ fontSize: 11, color: "text.secondary" }}>{deltaLabel}</Typography>
+          </Box>
+        )}
+        <Box sx={{ position: "absolute", right: -16, bottom: -16, width: 96, height: 96, borderRadius: "50%", bgcolor: color, opacity: 0.07 }} />
+      </CardContent>
+    </Card>
   );
 }
