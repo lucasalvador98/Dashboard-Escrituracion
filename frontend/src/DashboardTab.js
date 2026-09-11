@@ -1,9 +1,12 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
 import { parseDate, contarDiasHabiles, diffClass, INTERVALS } from "./lib/deadlines";
 import SlidePanel from "./components/SlidePanel";
+import DataTable from "./components/ui/DataTable";
+import { useSemaphorePalette } from "./components/ui/renderCells";
+import { useChartPalette } from "./theme/charts";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useTheme, alpha } from "@mui/material/styles";
 import Box from "@mui/material/Box";
@@ -15,6 +18,10 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import LinearProgress from "@mui/material/LinearProgress";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
+import ListSubheader from "@mui/material/ListSubheader";
 
 function StatusDot({ color }) {
   return (
@@ -69,6 +76,102 @@ const SEVERIDAD_STYLE = {
   gray: { badge: "bg-slate-100 text-slate-500", row: "hover:bg-slate-50/40" },
 };
 
+// Sort comparators for the demorados grid (DG-3): case-insensitive text with
+// numeric collation (nulls/empty to the bottom) and plain numeric order.
+function stringComparator(v1, v2) {
+  const a = v1 == null || v1 === "" ? null : String(v1);
+  const b = v2 == null || v2 === "" ? null : String(v2);
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return a.localeCompare(b, undefined, { numeric: true });
+}
+
+function numberComparator(v1, v2) {
+  const a = Number(v1);
+  const b = Number(v2);
+  const an = Number.isNaN(a) ? -Infinity : a;
+  const bn = Number.isNaN(b) ? -Infinity : b;
+  if (an === bn) return 0;
+  return an < bn ? -1 : 1;
+}
+
+// Días badge for the demorados grid: same semaphore rule as the old severity
+// badges (INV-2), colored from the theme semaphore slot so dark mode keeps the
+// hue-preserving tints (no hardcoded light-only badge colors).
+function diasBadgeCell() {
+  return function DiasBadgeCell(params) {
+    const palette = useSemaphorePalette();
+    const sev = severidadDias(params.value);
+    const colors = palette[sev] ?? palette.gray;
+    return (
+      <Chip
+        size="small"
+        label={`${params.value}d`}
+        sx={{ bgcolor: colors.bg, color: colors.text, fontWeight: 700, minWidth: 52 }}
+      />
+    );
+  };
+}
+
+// Sidebar row for the demorados escribano list: MUI ListItemButton with the
+// count badge and (for escribanos) the worst-severity dot (INV-2: color is
+// never the only cue — the count and title carry the same information).
+function SidebarEscribanoItem({ active, activeColor = "primary.main", onClick, title, primary, count, severity }) {
+  return (
+    <ListItemButton
+      selected={active}
+      onClick={onClick}
+      title={title}
+      sx={{
+        px: 1.5,
+        py: 0.75,
+        "&.Mui-selected": {
+          bgcolor: activeColor,
+          color: "#fff",
+          "&:hover": { bgcolor: activeColor },
+        },
+        "&.Mui-selected .MuiListItemText-primary": { color: "#fff" },
+      }}
+    >
+      <ListItemText
+        primary={primary}
+        primaryTypographyProps={{
+          sx: {
+            fontSize: 12,
+            fontWeight: 600,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          },
+        }}
+      />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+        {severity && (
+          <Box
+            sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: severity }}
+            title="Peor severidad"
+          />
+        )}
+        <Box
+          component="span"
+          sx={{
+            fontSize: 10,
+            fontWeight: 700,
+            px: 0.75,
+            py: 0.25,
+            borderRadius: "999px",
+            bgcolor: active ? "rgba(255,255,255,0.2)" : "action.hover",
+            color: active ? "#fff" : "text.secondary",
+          }}
+        >
+          {count}
+        </Box>
+      </Box>
+    </ListItemButton>
+  );
+}
+
 function formatFechaCorta(f) {
   if (!f || f === "N/A" || f === "") return "—";
   const d = parseDate(f);
@@ -89,6 +192,7 @@ function downloadCSV(filename, content) {
 
 export default function DashboardTab() {
   const theme = useTheme();
+  const chartPalette = useChartPalette();
   const { data, loading, error } = useDataLoader("escrituracion");
   const location = useLocation();
   const { state, set, reset } = useUrlState({
@@ -393,20 +497,120 @@ export default function DashboardTab() {
       .sort((a, b) => (b.items.length - a.items.length) || b.avg - a.avg);
   }, [demoradosFlat, matchDemorado]);
 
-  // Tabla: grupos de los casos ya filtrados por escribo seleccionado
-  const demoradosPorEscribano = useMemo(() => {
-    const grupos = {};
-    demoradosFiltrados.forEach(i => {
-      (grupos[i._escribano] = grupos[i._escribano] || []).push(i);
-    });
-    return Object.entries(grupos)
-      .map(([nombre, items]) => ({
-        nombre,
-        items,
-        avg: Math.round(items.reduce((s, i) => s + i._demora, 0) / items.length),
-      }))
-      .sort((a, b) => b.items.length - a.items.length);
-  }, [demoradosFiltrados]);
+  // ── Tabla de casos demorados (DataGrid) ──
+  // D8: flat grid over the filtered cases; the Escribano column replaces the
+  // old group-header rows while no escribano filter is active (the sidebar
+  // keeps the grouping). Pagination/sort are grid-owned (DG-3/4).
+  const [demoradoPagination, setDemoradoPagination] = useState({ page: 0, pageSize: 15 });
+  const [demoradoSortState, setDemoradoSortState] = useState([
+    { field: "_escribano", sort: "asc" },
+  ]);
+  // D8 initial sort: escribano asc with the demora-desc tie-break coming from
+  // the pre-sorted array order (DataGrid sort is stable). The community grid
+  // supports a single sort column (disableMultipleColumnsSorting), so a
+  // second _dias entry is never sent; the Escribano entry is dropped while an
+  // escribano filter hides that column (keeps the sort model consistent with
+  // the visible columns — no transient missing-field sort).
+  const demoradoSort = useMemo(
+    () => (demoradoFiltro.escribano ? demoradoSortState.filter(s => s.field !== "_escribano") : demoradoSortState),
+    [demoradoSortState, demoradoFiltro.escribano]
+  );
+  // DG-4: back to page 1 whenever any demorados filter changes.
+  useEffect(() => {
+    setDemoradoPagination(p => (p.page === 0 ? p : { ...p, page: 0 }));
+  }, [demoradoFiltro]);
+
+  const gridRows = useMemo(
+    () => demoradosFiltrados.map((item, idx) => ({ ...item, _gridId: idx })),
+    [demoradosFiltrados]
+  );
+
+  const demoradoColumns = useMemo(() => {
+    const cols = [];
+    if (!demoradoFiltro.escribano) {
+      cols.push({
+        field: "_escribano",
+        headerName: "Escribano",
+        width: 170,
+        sortComparator: stringComparator,
+      });
+    }
+    cols.push(
+      {
+        field: "_beneficiario",
+        headerName: "Beneficiario",
+        flex: 1,
+        minWidth: 170,
+        sortComparator: stringComparator,
+        renderCell: params => (
+          <Box
+            component="span"
+            title={isIPV(params.row) ? "IPV: Caso en Dirección de Viviendas" : undefined}
+            sx={{ fontWeight: 600 }}
+          >
+            {params.row._beneficiario}
+          </Box>
+        ),
+      },
+      {
+        field: "DNI",
+        headerName: "DNI",
+        width: 120,
+        sortComparator: stringComparator,
+        renderCell: params => (
+          <Box component="span" sx={{ fontFamily: "monospace", color: "text.secondary" }}>
+            {params.value || "—"}
+          </Box>
+        ),
+      },
+      { field: "_depto", headerName: "Depto", width: 110, sortComparator: stringComparator },
+      { field: "_barrio", headerName: "Barrio", width: 140, sortComparator: stringComparator },
+      {
+        field: "_dias",
+        headerName: "Días",
+        width: 92,
+        align: "center",
+        headerAlign: "center",
+        sortComparator: numberComparator,
+        renderCell: diasBadgeCell(),
+      },
+      {
+        field: "_demora",
+        headerName: "Demora",
+        width: 100,
+        align: "center",
+        headerAlign: "center",
+        sortComparator: numberComparator,
+        renderCell: params => (
+          <Box component="span" sx={{ fontWeight: 700, color: "error.main" }}>
+            +{params.value}d
+          </Box>
+        ),
+      },
+      {
+        field: "_detalle",
+        headerName: "Detalle",
+        width: 96,
+        align: "right",
+        headerAlign: "right",
+        sortable: false,
+        renderCell: () => (
+          <Box component="span" sx={{ color: "primary.main", fontWeight: 600 }}>
+            Ver →
+          </Box>
+        ),
+      }
+    );
+    return cols;
+  }, [demoradoFiltro.escribano]);
+
+  // Size the grid to the rows on the current page so short lists do not render
+  // a mostly-empty box (same approach as Stock/Escribanos).
+  const rowsOnPage = Math.min(
+    15,
+    Math.max(gridRows.length - demoradoPagination.page * 15, 1)
+  );
+  const gridHeight = 112 + rowsOnPage * 40;
 
   const tieneFiltroDemorados = !!(demoradoFiltro.escribano || demoradoFiltro.depto || demoradoFiltro.localidad || demoradoFiltro.barrio || demoradoFiltro.estado || demoradoFiltro.severidad || demoradoFiltro.search);
 
@@ -659,15 +863,17 @@ export default function DashboardTab() {
           {kpis.chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={kpis.chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: chartPalette.axis }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: chartPalette.axis }} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
+                  contentStyle={chartPalette.tooltip}
+                  labelStyle={{ color: chartPalette.axis }}
+                  itemStyle={{ color: chartPalette.item }}
                   formatter={(value) => [`${value} escrituraciones`, "Cantidad"]}
-                  cursor={{ fill: "rgba(59,130,246,0.06)" }}
+                  cursor={{ fill: chartPalette.cursor }}
                 />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={36} fill="#6366f1" />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={36} fill={chartPalette.bar} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -761,14 +967,16 @@ export default function DashboardTab() {
           {demoraTrend.length > 0 ? (
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={demoraTrend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} unit="%" />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: chartPalette.axis }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: chartPalette.axis }} tickLine={false} axisLine={false} unit="%" />
                 <Tooltip
-                  contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
+                  contentStyle={chartPalette.tooltip}
+                  labelStyle={{ color: chartPalette.axis }}
+                  itemStyle={{ color: chartPalette.item }}
                   formatter={(value, name) => name === "pct" ? [`${value}% demorados`, "% Demora"] : [value, name]}
                 />
-                <Line type="monotone" dataKey="pct" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 4, fill: "#ef4444" }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="pct" stroke={chartPalette.line} strokeWidth={2.5} dot={{ r: 4, fill: chartPalette.line }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -871,231 +1079,212 @@ export default function DashboardTab() {
 
       ) : (
         /* ── Tab: Demorados ── */
-        <div className="space-y-4">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {demorados.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center">
-              <span className="text-3xl">✅</span>
-              <p className="text-sm text-slate-500 font-medium mt-2">Sin demoras — todos los casos están dentro del plazo</p>
-            </div>
+            <Paper elevation={0} sx={{ p: 8, textAlign: "center", border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+              <span role="img" aria-label="Sin demoras" style={{ fontSize: 32 }}>✅</span>
+              <Typography sx={{ mt: 1, color: "text.secondary", fontSize: 14, fontWeight: 500 }}>
+                Sin demoras — todos los casos están dentro del plazo
+              </Typography>
+            </Paper>
           ) : (
             <>
               {/* Panel de casos demorados: sidebar de escribanos + tabla */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+              <Paper elevation={0} sx={{ p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
                 {/* Header: título + píldoras de severidad + conteo */}
-                <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                  <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Casos Demorados</h3>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex bg-slate-100 rounded-lg p-0.5">
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1.5 }}>
+                  <Typography component="h3" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Casos Demorados
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                    <Box sx={{ display: "inline-flex", bgcolor: "action.hover", borderRadius: 1.5, p: 0.25, width: "fit-content" }}>
                       {[
                         { key: "", label: "Todos" },
                         { key: "red", label: "Críticos" },
                         { key: "yellow", label: "Medios" },
                         { key: "green", label: "Leves" },
                       ].map(p => (
-                        <button
+                        <Button
                           key={p.key || "all"}
-                          className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
-                            demoradoFiltro.severidad === p.key
-                              ? "bg-white text-slate-900 shadow-sm"
-                              : "text-slate-500 hover:text-slate-700"
-                          }`}
+                          size="small"
+                          aria-pressed={demoradoFiltro.severidad === p.key}
                           onClick={() => setDemoradoFiltro(f => ({ ...f, severidad: p.key }))}
+                          sx={{
+                            px: 1.25,
+                            py: 0.5,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            minWidth: 0,
+                            color: demoradoFiltro.severidad === p.key ? "text.primary" : "text.secondary",
+                            bgcolor: demoradoFiltro.severidad === p.key ? "background.paper" : "transparent",
+                            boxShadow: demoradoFiltro.severidad === p.key ? 1 : 0,
+                            "&:hover": {
+                              bgcolor: demoradoFiltro.severidad === p.key ? "background.paper" : "action.selected",
+                            },
+                          }}
                         >
                           {p.label}
-                        </button>
+                        </Button>
                       ))}
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                    </Box>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary", bgcolor: "action.hover", px: 1.25, py: 0.5, borderRadius: "999px" }}>
                       {demoradosFiltrados.length} de {demoradosFlat.length} casos
-                    </span>
-                  </div>
-                </div>
+                    </Typography>
+                  </Box>
+                </Box>
 
                 {/* Búsqueda + toggle de filtros avanzados */}
-                <div className="flex items-center gap-2 mb-3">
-                  <input
-                    type="text"
-                    className="flex-1 min-w-[180px] px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Buscar por escribano, nombre, DNI, depto o barrio..."
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5, flexWrap: "wrap" }}>
+                  <TextField
+                    size="small"
                     value={demoradoFiltro.search}
                     onChange={e => setDemoradoFiltro(f => ({ ...f, search: e.target.value }))}
+                    placeholder="Buscar por escribano, nombre, DNI, depto o barrio..."
+                    inputProps={{ "aria-label": "Buscar casos demorados" }}
+                    sx={{ flex: "1 1 180px", minWidth: 180 }}
                   />
-                  <button
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    aria-expanded={demoradosShowAdvanced}
                     onClick={() => setDemoradosShowAdvanced(v => !v)}
-                    className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
-                      demoradosShowAdvanced
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-                    }`}
+                    sx={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: demoradosShowAdvanced ? "primary.main" : "text.secondary",
+                      borderColor: demoradosShowAdvanced ? "primary.light" : "divider",
+                      bgcolor: demoradosShowAdvanced ? alpha(theme.palette.primary.main, 0.06) : "transparent",
+                    }}
                   >
                     Filtros {demoradosShowAdvanced ? "▲" : "▼"}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
                     onClick={limpiarFiltrosDemorados}
                     disabled={!tieneFiltroDemorados}
-                    className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:bg-red-50 enabled:hover:text-red-700 enabled:hover:border-red-200 text-slate-500 border-slate-200 bg-white"
+                    sx={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "text.secondary",
+                      borderColor: "divider",
+                      "&:hover:not(:disabled)": {
+                        color: "error.main",
+                        borderColor: "error.light",
+                        bgcolor: alpha(theme.palette.error.main, 0.04),
+                      },
+                    }}
                   >
                     Limpiar ×
-                  </button>
-                </div>
+                  </Button>
+                </Box>
 
                 {/* Filtros avanzados (colapsables) */}
                 {demoradosShowAdvanced && (
-                  <div className="flex items-center gap-2 mb-4 flex-wrap bg-slate-50/70 rounded-xl p-3 border border-slate-100">
-                    <select
-                      className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, flexWrap: "wrap", bgcolor: "action.hover", borderRadius: 2, p: 1.5, border: "1px solid", borderColor: "divider" }}>
+                    <TextField
+                      select
+                      size="small"
                       value={demoradoFiltro.depto}
                       onChange={e => setDemoradoFiltro(f => ({ ...f, depto: e.target.value }))}
+                      SelectProps={{ native: true, inputProps: { "aria-label": "Departamento de casos demorados" } }}
+                      sx={{ minWidth: 180 }}
                     >
                       <option value="">Todos los departamentos</option>
                       {demoradoDeptos.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    <select
-                      className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    </TextField>
+                    <TextField
+                      select
+                      size="small"
                       value={demoradoFiltro.localidad}
                       onChange={e => setDemoradoFiltro(f => ({ ...f, localidad: e.target.value }))}
+                      SelectProps={{ native: true, inputProps: { "aria-label": "Localidad de casos demorados" } }}
+                      sx={{ minWidth: 170 }}
                     >
                       <option value="">Todas las localidades</option>
                       {demoradoLocalidades.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    <select
-                      className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    </TextField>
+                    <TextField
+                      select
+                      size="small"
                       value={demoradoFiltro.barrio}
                       onChange={e => setDemoradoFiltro(f => ({ ...f, barrio: e.target.value }))}
+                      SelectProps={{ native: true, inputProps: { "aria-label": "Barrio de casos demorados" } }}
+                      sx={{ minWidth: 170 }}
                     >
                       <option value="">Todos los barrios</option>
                       {demoradoBarrios.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    <select
-                      className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    </TextField>
+                    <TextField
+                      select
+                      size="small"
                       value={demoradoFiltro.estado}
                       onChange={e => setDemoradoFiltro(f => ({ ...f, estado: e.target.value }))}
+                      SelectProps={{ native: true, inputProps: { "aria-label": "Estado de casos demorados" } }}
+                      sx={{ minWidth: 170 }}
                     >
                       <option value="">Todos los estados</option>
                       {demoradoEstados.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
+                    </TextField>
+                  </Box>
                 )}
 
                 {/* Master-detail: sidebar escribanos + tabla */}
-                <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4">
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "240px 1fr" }, gap: 2 }}>
                   {/* Sidebar de escribanos */}
-                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[300px] lg:max-h-[480px] lg:mt-0">
-                    <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Escribanos</span>
-                    </div>
-                    <div className="overflow-auto divide-y divide-slate-50">
-                      <button
-                        onClick={() => setDemoradoFiltro(f => ({ ...f, escribano: "" }))}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
-                          !demoradoFiltro.escribano
-                            ? "bg-slate-800 text-white"
-                            : "bg-white text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        <span className="text-xs font-bold">Todos</span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${!demoradoFiltro.escribano ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
-                          {demoradosFlat.length}
-                        </span>
-                      </button>
-                      {demoradosSidebar.map(esc => (
-                        <button
-                          key={esc.nombre}
-                          onClick={() => setDemoradoFiltro(f => ({ ...f, escribano: f.escribano === esc.nombre ? "" : esc.nombre }))}
-                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition-colors ${
-                            demoradoFiltro.escribano === esc.nombre
-                              ? "bg-red-600 text-white"
-                              : "bg-white hover:bg-red-50/60"
-                          }`}
-                          title={`${esc.items.length} ${esc.items.length === 1 ? "caso" : "casos"} · prom +${esc.avg}d`}
-                        >
-                          <span className="text-xs font-semibold truncate">{esc.nombre}</span>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <span
-                              className={`w-2 h-2 rounded-full ${esc.peor === "red" ? "bg-red-500" : esc.peor === "yellow" ? "bg-amber-400" : "bg-emerald-400"}`}
-                              title="Peor severidad"
-                            />
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${demoradoFiltro.escribano === esc.nombre ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
-                              {esc.items.length}
-                            </span>
-                          </div>
-                        </button>
-                      ))}
+                  <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, overflow: "hidden", maxHeight: { xs: 300, lg: 480 }, display: "flex", flexDirection: "column" }}>
+                    <ListSubheader component="div" disableSticky sx={{ bgcolor: "action.hover", color: "text.secondary", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", lineHeight: "32px" }}>
+                      Escribanos
+                    </ListSubheader>
+                    <Box sx={{ overflowY: "auto", flex: 1 }}>
+                      <List dense disablePadding>
+                        <SidebarEscribanoItem
+                          active={!demoradoFiltro.escribano}
+                          onClick={() => setDemoradoFiltro(f => ({ ...f, escribano: "" }))}
+                          primary="Todos"
+                          count={demoradosFlat.length}
+                          activeColor="primary.main"
+                        />
+                        {demoradosSidebar.map(esc => (
+                          <SidebarEscribanoItem
+                            key={esc.nombre}
+                            active={demoradoFiltro.escribano === esc.nombre}
+                            onClick={() => setDemoradoFiltro(f => ({ ...f, escribano: f.escribano === esc.nombre ? "" : esc.nombre }))}
+                            primary={esc.nombre}
+                            count={esc.items.length}
+                            severity={esc.peor === "red" ? "error.main" : esc.peor === "yellow" ? "warning.main" : "success.main"}
+                            title={`${esc.items.length} ${esc.items.length === 1 ? "caso" : "casos"} · prom +${esc.avg}d`}
+                            activeColor="error.main"
+                          />
+                        ))}
+                      </List>
                       {demoradosSidebar.length === 0 && (
-                        <div className="px-3 py-6 text-center text-xs text-slate-400">
+                        <Box sx={{ px: 2, py: 4, textAlign: "center", fontSize: 12, color: "text.disabled" }}>
                           Sin casos con los filtros actuales
-                        </div>
+                        </Box>
                       )}
-                    </div>
-                  </div>
+                    </Box>
+                  </Paper>
 
                   {/* Tabla de casos */}
-                  <div className="overflow-x-auto max-h-[540px] overflow-y-auto rounded-xl border border-slate-100">
-                    <table className="w-full text-xs">
-                      <thead className="sticky top-0 z-10">
-                        <tr className="border-b border-slate-100 bg-slate-50">
-                          <th className="text-left py-2 px-2 text-[10px] font-bold text-slate-500 uppercase">Beneficiario</th>
-                          <th className="text-left py-2 px-2 text-[10px] font-bold text-slate-500 uppercase">DNI</th>
-                          <th className="text-left py-2 px-2 text-[10px] font-bold text-slate-500 uppercase">Depto</th>
-                          <th className="text-left py-2 px-2 text-[10px] font-bold text-slate-500 uppercase">Barrio</th>
-                          <th className="text-center py-2 px-2 text-[10px] font-bold text-slate-500 uppercase">Días</th>
-                          <th className="text-center py-2 px-2 text-[10px] font-bold text-slate-500 uppercase">Demora</th>
-                          <th className="text-right py-2 px-2 text-[10px] font-bold text-slate-500 uppercase">Detalle</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {demoradosPorEscribano.map(grupo => (
-                          <React.Fragment key={grupo.nombre}>
-                            {!demoradoFiltro.escribano && (
-                              <tr className="bg-slate-100/70">
-                                <td colSpan={7} className="py-1.5 px-2">
-                                  <span className="text-[11px] font-bold text-slate-700">{grupo.nombre}</span>
-                                  <span className="ml-2 text-[10px] font-semibold text-slate-400">
-                                    {grupo.items.length} {grupo.items.length === 1 ? "caso" : "casos"} · prom +{grupo.avg}d
-                                  </span>
-                                </td>
-                              </tr>
-                            )}
-                            {grupo.items.map((item, idx) => {
-                              const sev = severidadDias(item._dias);
-                              return (
-                                <tr
-                                  key={idx}
-                                  onClick={() => setDemoradoDetail(item)}
-                                  className={`border-b border-slate-50 last:border-0 cursor-pointer transition-colors ${SEVERIDAD_STYLE[sev].row}`}
-                                  title={isIPV(item) ? "IPV: Caso en Dirección de Viviendas" : undefined}
-                                >
-                                  <td className="py-2 px-2 font-semibold text-slate-800">{item._beneficiario}</td>
-                                  <td className="py-2 px-2 font-mono text-slate-500">{item.DNI || "—"}</td>
-                                  <td className="py-2 px-2 text-slate-600">{item._depto}</td>
-                                  <td className="py-2 px-2 text-slate-600">{item._barrio}</td>
-                                  <td className="py-2 px-2 text-center">
-                                    <span className={`inline-block min-w-[2.5rem] px-1.5 py-0.5 rounded-full text-[11px] font-bold ${SEVERIDAD_STYLE[sev].badge}`}>
-                                      {item._dias}d
-                                    </span>
-                                  </td>
-                                  <td className="py-2 px-2 text-center font-bold text-red-600">+{item._demora}d</td>
-                                  <td className="py-2 px-2 text-right text-blue-600 font-semibold">Ver →</td>
-                                </tr>
-                              );
-                            })}
-                          </React.Fragment>
-                        ))}
-                        {demoradosFiltrados.length === 0 && (
-                          <tr>
-                            <td colSpan={7} className="py-8 text-center text-slate-400">
-                              No hay casos que coincidan con los filtros
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+                  <DataTable
+                    rows={gridRows}
+                    columns={demoradoColumns}
+                    getRowId={row => row._gridId}
+                    height={gridHeight}
+                    showToolbar
+                    paginationModel={demoradoPagination}
+                    onPaginationModelChange={setDemoradoPagination}
+                    sortModel={demoradoSort}
+                    onSortModelChange={setDemoradoSortState}
+                    onRowClick={params => setDemoradoDetail(params.row)}
+                    emptyState={{ message: "No hay casos que coincidan con los filtros" }}
+                  />
+                </Box>
+              </Paper>
             </>
           )}
-        </div>
+        </Box>
       )}
 
       {/* ── Modal detalle de un caso demorado ── */}

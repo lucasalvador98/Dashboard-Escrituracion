@@ -14,7 +14,7 @@ const SEMAPHORE_LIGHT = {
   gray: { bg: "#f1f5f9", text: "#64748b" },
 };
 
-function useSemaphorePalette() {
+export function useSemaphorePalette() {
   const theme = useTheme();
   return theme.palette?.semaphore ?? SEMAPHORE_LIGHT;
 }
