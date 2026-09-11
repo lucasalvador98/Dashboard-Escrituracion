@@ -1,16 +1,18 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
+import Box from "@mui/material/Box";
+import Paper from "@mui/material/Paper";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
+import Typography from "@mui/material/Typography";
+import { alpha } from "@mui/material/styles";
 import useDataLoader from "./hooks/useDataLoader";
 import TimelineBar from "./components/TimelineBar";
-import { INTERVALS, diffClass, contarDiasHabiles, parseDate } from "./lib/deadlines";
+import { useSemaphorePalette } from "./components/ui/renderCells";
+import { INTERVALS, diffClass, parseDate } from "./lib/deadlines";
 
-const BADGE = {
-  green: "bg-emerald-100 text-emerald-700",
-  yellow: "bg-amber-100 text-amber-700",
-  red: "bg-red-100 text-red-700",
-  gray: "bg-slate-100 text-slate-500",
-};
-
+// Semaphore labels (INV-3): identical user-visible text to the pre-refactor page.
 const LABEL = {
   green: "Dentro del plazo",
   yellow: "Alerta",
@@ -45,29 +47,37 @@ function formatDate(fecha) {
   });
 }
 
+// Shared link styling for the page's navigation links.
+const linkSx = {
+  textDecoration: "none",
+  color: "primary.main",
+  fontWeight: 600,
+  "&:hover": { textDecoration: "underline" },
+};
+
 export default function ExpedienteDetail() {
   const { id } = useParams();
   const { data, loading, error } = useDataLoader("escrituracion");
+  const palette = useSemaphorePalette();
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-sm text-slate-400">Cargando expediente…</div>
-      </div>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 10 }}>
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+          Cargando expediente…
+        </Typography>
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-16">
-        <div className="text-sm text-red-500 mb-3">{error}</div>
-        <Link
-          to="/dashboard"
-          className="text-sm font-semibold text-primary-600 hover:underline"
-        >
+      <Box sx={{ textAlign: "center", py: 8 }}>
+        <Typography sx={{ fontSize: 14, color: "error.main", mb: 1.5 }}>{error}</Typography>
+        <Typography component={Link} to="/dashboard" sx={{ ...linkSx, fontSize: 14 }}>
           Volver al dashboard
-        </Link>
-      </div>
+        </Typography>
+      </Box>
     );
   }
 
@@ -75,22 +85,29 @@ export default function ExpedienteDetail() {
 
   if (!item) {
     return (
-      <div className="text-center py-16">
-        <div className="text-5xl mb-4">🔍</div>
-        <h2 className="text-lg font-bold text-slate-700 mb-2">
+      <Box sx={{ textAlign: "center", py: 8 }}>
+        <Typography sx={{ fontSize: 48, lineHeight: 1, mb: 2 }}>🔍</Typography>
+        <Typography
+          component="h2"
+          sx={{ fontSize: 18, fontWeight: 700, color: "text.primary", mb: 1 }}
+        >
           Expediente no encontrado
-        </h2>
-        <p className="text-sm text-slate-400 mb-4">
+        </Typography>
+        <Typography sx={{ fontSize: 14, color: "text.secondary", mb: 2 }}>
           No se encontró ningún expediente con el identificador{" "}
-          <code className="font-mono text-slate-600">{decodeURIComponent(id)}</code>.
-        </p>
-        <Link
+          <Box component="code" sx={{ fontFamily: "monospace", color: "text.primary" }}>
+            {decodeURIComponent(id)}
+          </Box>
+          .
+        </Typography>
+        <Typography
+          component={Link}
           to="/dashboard"
-          className="inline-block text-sm font-semibold text-primary-600 hover:underline"
+          sx={{ ...linkSx, display: "inline-block", fontSize: 14 }}
         >
           Volver al dashboard
-        </Link>
-      </div>
+        </Typography>
+      </Box>
     );
   }
 
@@ -114,87 +131,157 @@ export default function ExpedienteDetail() {
   });
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <Box sx={{ maxWidth: 896, mx: "auto" }}>
       {/* Back links */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
+        <Typography
+          component={Link}
           to="/dashboard"
-          className="text-xs font-semibold text-slate-400 hover:text-primary-600 transition-colors"
+          sx={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: "text.secondary",
+            textDecoration: "none",
+            transition: "color 0.2s ease",
+            "&:hover": { color: "primary.main" },
+          }}
         >
           Dashboard
-        </Link>
-        <span className="text-slate-300">/</span>
-        <span className="text-xs font-bold text-slate-600">Expediente</span>
-      </div>
+        </Typography>
+        <Typography sx={{ fontSize: 12, color: "text.disabled" }}>/</Typography>
+        <Typography sx={{ fontSize: 12, fontWeight: 700, color: "text.primary" }}>
+          Expediente
+        </Typography>
+      </Box>
 
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 mb-1">{nombre}</h1>
-            <p className="text-sm text-slate-500 font-mono">
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "flex-start", sm: "center" },
+            justifyContent: "space-between",
+            gap: 2,
+          }}
+        >
+          <Box>
+            <Typography
+              component="h1"
+              sx={{ fontSize: 20, fontWeight: 700, color: "text.primary", mb: 0.5 }}
+            >
+              {nombre}
+            </Typography>
+            <Typography
+              sx={{ fontSize: 14, color: "text.secondary", fontFamily: "monospace" }}
+            >
               DNI {dni}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
-              {estado}
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
-              {escribano}
-            </span>
-          </div>
-        </div>
-      </div>
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+            <Chip
+              label={estado}
+              sx={{ bgcolor: "action.selected", color: "text.primary", fontWeight: 700, fontSize: 12 }}
+            />
+            <Chip
+              label={escribano}
+              sx={{
+                bgcolor: (theme) =>
+                  alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.24 : 0.1),
+                color: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? theme.palette.primary.light
+                    : theme.palette.primary.main,
+                fontWeight: 700,
+                fontSize: 12,
+              }}
+            />
+          </Box>
+        </Box>
+      </Paper>
 
       {/* Timeline */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm mb-6">
-        <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography
+          component="h2"
+          sx={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "text.primary",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            mb: 2,
+          }}
+        >
           Cronología
-        </h2>
+        </Typography>
         <TimelineBar item={item} intervals={INTERVALS} />
-      </div>
+      </Paper>
 
       {/* Interval details */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
-        <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">
+      <Paper sx={{ p: 3 }}>
+        <Typography
+          component="h2"
+          sx={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "text.primary",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            mb: 2,
+          }}
+        >
           Detalle de Plazos
-        </h2>
-        <div className="space-y-3">
-          {enriched.map((iv) => (
-            <div
-              key={iv.key}
-              className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-slate-700">
-                  {iv.fullLabel}
-                </div>
-                <div className="text-xs text-slate-400 mt-0.5">
-                  {formatDate(iv.fecha1)} → {formatDate(iv.fecha2)}
-                </div>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <div className="text-right">
-                  <div className="text-sm font-bold text-slate-700">
-                    {iv.val !== "N/A" && iv.val !== "" && iv.val != null
-                      ? `${iv.val}d`
-                      : "—"}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    esperado {iv.esperado}d
-                  </div>
-                </div>
-                <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${BADGE[iv.cls]}`}
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          {enriched.map((iv) => {
+            const colors = palette[iv.cls] ?? palette.gray;
+            return (
+              <Card
+                key={iv.key}
+                variant="outlined"
+                elevation={0}
+                sx={{ transition: "border-color 0.2s ease", "&:hover": { borderColor: "primary.light" } }}
+              >
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    flexDirection: { xs: "column", sm: "row" },
+                    alignItems: { xs: "flex-start", sm: "center" },
+                    gap: 1.5,
+                  }}
                 >
-                  {LABEL[iv.cls]}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
+                      {iv.fullLabel}
+                    </Typography>
+                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.25 }}>
+                      {formatDate(iv.fecha1)} → {formatDate(iv.fecha2)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexShrink: 0 }}>
+                    <Box sx={{ textAlign: "right" }}>
+                      <Typography sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
+                        {iv.val !== "N/A" && iv.val !== "" && iv.val != null
+                          ? `${iv.val}d`
+                          : "—"}
+                      </Typography>
+                      <Typography sx={{ fontSize: 10, color: "text.secondary" }}>
+                        esperado {iv.esperado}d
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={LABEL[iv.cls]}
+                      size="small"
+                      sx={{ bgcolor: colors.bg, color: colors.text, fontWeight: 700, fontSize: 11 }}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </Box>
+      </Paper>
+    </Box>
   );
 }
