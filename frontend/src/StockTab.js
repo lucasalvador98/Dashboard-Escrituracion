@@ -1,9 +1,13 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import TextField from "@mui/material/TextField";
 import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
+import DataTable from "./components/ui/DataTable";
 import API_CONFIG from "./config-api";
 
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
+
+const PAGE_SIZE = 15;
 
 const ESTADO_FORMATO = {
   "Finalizada sin Entregar": "finalizadas",
@@ -23,6 +27,20 @@ const ACCORDION_COLUMNS = [
   { key: "cotitular", label: "Cotitular", sortable: true },
   { key: "escribano", label: "Escribano", sortable: true },
 ];
+
+const COLUMN_WIDTHS = {
+  nro: 60,
+  departamento: 140,
+  localidad: 150,
+  barrio: 150,
+  mza: 84,
+  lote: 84,
+  nombre: 240,
+  dni: 130,
+  tel: 140,
+  cotitular: 220,
+  escribano: 190,
+};
 
 function extractFields(item) {
   return {
@@ -56,17 +74,49 @@ function buildExportUrl(formato, filters) {
   return `${API_URL}/stock/planillas?${params.toString()}`;
 }
 
-function SortIcon({ active, direction }) {
-  if (!active) return <span className="text-slate-300 ml-1">⇅</span>;
-  return <span className="text-blue-600 ml-1">{direction === "asc" ? "↑" : "↓"}</span>;
+// Sort comparator replicating the previous accordion table semantics (DG-3):
+// case-insensitive text comparison via localeCompare.
+function textComparator(v1, v2) {
+  const a = String(v1 ?? "").toLowerCase();
+  const b = String(v2 ?? "").toLowerCase();
+  return a.localeCompare(b);
+}
+
+// Adapter: ACCORDION_COLUMNS descriptors → DataGrid column defs. The `nro`
+// column keeps the previous global row number ((page * PAGE_SIZE) + index + 1)
+// and is never sortable/hideable; the remaining columns carry the `sortable`
+// flag declared in ACCORDION_COLUMNS (task 3.2).
+function buildStockColumns(page) {
+  return ACCORDION_COLUMNS.map(col => {
+    if (col.key === "nro") {
+      return {
+        field: "nro",
+        headerName: col.label,
+        width: COLUMN_WIDTHS.nro,
+        sortable: false,
+        filterable: false,
+        hideable: false,
+        disableColumnMenu: true,
+        align: "center",
+        headerAlign: "center",
+        renderCell: params =>
+          params.api.getRowIndexRelativeToVisibleRows(params.id) + 1 + page * PAGE_SIZE,
+      };
+    }
+    return {
+      field: col.key,
+      headerName: col.label,
+      width: COLUMN_WIDTHS[col.key] || 150,
+      sortable: col.sortable,
+      sortComparator: col.sortable ? textComparator : undefined,
+    };
+  });
 }
 
 function AccordionTable({ items }) {
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState(null);
-  const [sortDir, setSortDir] = useState("asc");
-  const [page, setPage] = useState(1);
-  const perPage = 15;
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: PAGE_SIZE });
+  const [sortModel, setSortModel] = useState([]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -77,129 +127,50 @@ function AccordionTable({ items }) {
     });
   }, [items, search]);
 
-  const sorted = useMemo(() => {
-    if (!sortKey) return filtered;
-    return [...filtered].sort((a, b) => {
-      const fa = extractFields(a);
-      const fb = extractFields(b);
-      const va = String(fa[sortKey] ?? "").toLowerCase();
-      const vb = String(fb[sortKey] ?? "").toLowerCase();
-      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
-    });
-  }, [filtered, sortKey, sortDir]);
+  // DG-4: reset to the first page whenever the search or the group data changes.
+  useEffect(() => {
+    setPaginationModel(p => (p.page === 0 ? p : { ...p, page: 0 }));
+  }, [filtered]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / perPage));
-  const safePage = Math.min(Math.max(1, page), totalPages);
-  const paginated = sorted.slice((safePage - 1) * perPage, safePage * perPage);
+  // DataGrid needs unique row ids; extractFields produces the display values and
+  // the filtered index keeps identity stable across the grid's internal sorting.
+  const gridRows = useMemo(
+    () => filtered.map((item, idx) => ({ ...extractFields(item), _stockId: idx })),
+    [filtered]
+  );
 
-  const handleSort = (key, sortable) => {
-    if (!sortable) return;
-    if (sortKey === key) {
-      setSortDir(d => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  };
+  const columns = useMemo(() => buildStockColumns(paginationModel.page), [paginationModel.page]);
+
+  // Size the grid to the rows actually on the current page so short groups do
+  // not render a mostly-empty box.
+  const rowsOnPage = Math.min(
+    PAGE_SIZE,
+    Math.max(gridRows.length - paginationModel.page * PAGE_SIZE, 1)
+  );
+  const gridHeight = 112 + rowsOnPage * 40;
 
   return (
     <div className="space-y-2">
-      <input
-        type="text"
+      <TextField
+        size="small"
+        fullWidth
         value={search}
-        onChange={e => { setSearch(e.target.value); setPage(1); }}
+        onChange={e => setSearch(e.target.value)}
         placeholder="Buscar beneficiario, DNI, departamento, localidad, barrio..."
-        className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        inputProps={{ "aria-label": "Buscar en la tabla de stock" }}
       />
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
-          <thead>
-            <tr className="bg-slate-100">
-              {ACCORDION_COLUMNS.map(col => (
-                <th
-                  key={col.key}
-                  className={`px-2.5 py-2 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider border border-slate-200 ${col.sortable ? "cursor-pointer hover:bg-slate-200 select-none" : ""}`}
-                  onClick={() => handleSort(col.key, col.sortable)}
-                >
-                  <span className="inline-flex items-center">
-                    {col.label}
-                    {col.sortable && <SortIcon active={sortKey === col.key} direction={sortDir} />}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginated.map((item, idx) => {
-              const f = extractFields(item);
-              const globalIdx = (safePage - 1) * perPage + idx;
-              return (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-2.5 py-2 border border-slate-200 text-slate-400 font-medium">{globalIdx + 1}</td>
-                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.barrio}</td>
-                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.mza}</td>
-                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.lote}</td>
-                  <td className="px-2.5 py-2 border border-slate-200 font-semibold text-slate-800">{f.nombre}</td>
-                  <td className="px-2.5 py-2 border border-slate-200 font-mono text-[11px]">{f.dni}</td>
-                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.tel}</td>
-                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.cotitular}</td>
-                  <td className="px-2.5 py-2 border border-slate-200 text-slate-700">{f.escribano}</td>
-                </tr>
-              );
-            })}
-            {paginated.length === 0 && (
-              <tr>
-                <td colSpan={ACCORDION_COLUMNS.length} className="px-2.5 py-6 text-center text-slate-400 border border-slate-200">
-                  Sin resultados
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-[11px] text-slate-400 font-medium">
-            {sorted.length} registros — Página {safePage} de {totalPages}
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              className="px-2 py-1 text-xs font-medium text-slate-500 bg-slate-100 rounded hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={safePage === 1}
-            >
-              ←
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) pageNum = i + 1;
-              else if (safePage <= 3) pageNum = i + 1;
-              else if (safePage >= totalPages - 2) pageNum = totalPages - 4 + i;
-              else pageNum = safePage - 2 + i;
-              return (
-                <button
-                  key={pageNum}
-                  className={`w-7 h-7 text-xs font-medium rounded transition-colors ${
-                    safePage === pageNum ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-100"
-                  }`}
-                  onClick={() => setPage(pageNum)}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-            <button
-              className="px-2 py-1 text-xs font-medium text-slate-500 bg-slate-100 rounded hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={safePage === totalPages}
-            >
-              →
-            </button>
-          </div>
-        </div>
-      )}
+      <DataTable
+        rows={gridRows}
+        columns={columns}
+        getRowId={row => row._stockId}
+        height={gridHeight}
+        showToolbar
+        paginationModel={paginationModel}
+        onPaginationModelChange={setPaginationModel}
+        sortModel={sortModel}
+        onSortModelChange={setSortModel}
+        emptyState={{ message: "Sin resultados", hint: "Probá ajustando la búsqueda" }}
+      />
     </div>
   );
 }
