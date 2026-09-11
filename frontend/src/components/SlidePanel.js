@@ -1,53 +1,58 @@
-import React, { useEffect } from "react";
+import React from "react";
+import Drawer from "@mui/material/Drawer";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
+import CloseIcon from "@mui/icons-material/Close";
 
+/**
+ * Slide-over detail panel (UI-2). Rebuilt on the MUI temporary Drawer anchored
+ * to the right: same props contract ({ isOpen, onClose, title, children }),
+ * same 600px max width, same slide transition, and ESC/backdrop/close-button
+ * dismissal are handled natively by the Drawer's Modal. The header title keeps
+ * its h3 heading role (INV-3) and the Paper surface uses the theme's
+ * background.paper token so the panel stays legible in dark mode.
+ *
+ * `ModalProps.disablePortal` keeps the drawer inside the page's DOM subtree
+ * instead of portaling to <body>: no ancestor creates a containing block
+ * (transform/filter), so the fixed overlay still covers the viewport, and
+ * existing tests asserting container.textContent for open panels keep passing.
+ */
 export default function SlidePanel({ isOpen, onClose, title, children }) {
-  // Close on ESC key
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.addEventListener("keydown", handleEsc);
-    }
-    return () => {
-      document.removeEventListener("keydown", handleEsc);
-    };
-  }, [isOpen, onClose]);
-
   return (
-    <>
-      {/* Backdrop overlay */}
-      <div
-        className={`slide-backdrop fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-        onClick={onClose}
-      />
-
-      {/* Slide panel */}
-      <div
-        className={`slide-panel fixed top-0 right-0 h-full w-[600px] max-w-full z-50 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+    <Drawer
+      anchor="right"
+      open={isOpen}
+      onClose={onClose}
+      ModalProps={{ disablePortal: true }}
+      PaperProps={{ sx: { width: 600, maxWidth: "100%" } }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 3,
+          py: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          flexShrink: 0,
+        }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
-          <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            aria-label="Close panel"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="h-[calc(100%-73px)] overflow-y-auto">
-          {children}
-        </div>
-      </div>
-    </>
+        <Typography component="h3" sx={{ fontSize: 18, fontWeight: 600, color: "text.primary" }}>
+          {title}
+        </Typography>
+        <IconButton
+          onClick={onClose}
+          aria-label="Close panel"
+          size="small"
+          sx={{ color: "text.secondary", "&:hover": { bgcolor: "action.hover" } }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
+      <Box sx={{ flexGrow: 1, overflowY: "auto" }}>{children}</Box>
+    </Drawer>
   );
 }

@@ -1,15 +1,29 @@
 import React from "react";
+import Box from "@mui/material/Box";
+import Paper from "@mui/material/Paper";
+import TextField from "@mui/material/TextField";
+import MenuItem from "@mui/material/MenuItem";
+import Button from "@mui/material/Button";
 
 /**
- * SelectFilters
- * Props:
- *  - data: array de registros (processedData)
- *  - filters: objeto de filtros { departamento, localidad, barrio, estado, escribano, dni }
- *  - setFilters: función para actualizar filtros (recibe parcial)
- *  - resetFilters: función para volver los filtros al estado inicial (opcional)
+ * Cascading filter bar (UI-3). Rebuilt on MUI TextField(select): same props
+ * contract ({ data, filters, setFilters, resetFilters }), same option lists and
+ * values, same cascading reset semantics (Departamento resets Localidad+Barrio,
+ * Localidad resets Barrio), same URL-state wiring through setFilters, and the
+ * same "Limpiar filtros" reset button (disabled when no filter is active).
  *
- * Comportamiento: selects no editables, dependientes en cascada.
+ * Labels stay identical (INV-3) and every color comes from theme tokens, so the
+ * controls stay legible in dark mode.
  */
+
+// Uppercase micro-label shared by every control (matches the previous CSS).
+const labelSx = {
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+};
+
 export default function SelectFilters({ data = [], filters = {}, setFilters, resetFilters }) {
   const normalize = v => (v == null || v === "" ? "Todos" : v);
 
@@ -50,99 +64,116 @@ export default function SelectFilters({ data = [], filters = {}, setFilters, res
       : ["Todos", ...unique(data.filter(x => x.Departamento === filters.departamento).map(x => x.Barrio))])
     : ["Todos", ...barriosAll];
 
-  const isDefault = (val) => normalize(val) === "Todos";
-
   const escribanoValue = filters.escribano || "Todos";
 
-  const baseSelectStyle = (val) => ({ color: isDefault(val) ? "#8b97a8" : undefined });
+  const selectProps = {
+    select: true,
+    size: "small",
+    fullWidth: true,
+    InputLabelProps: { sx: labelSx },
+  };
 
   return (
-    <div className="filter-section">
-      <div className="filter-group">
-        <div className="filter-item">
-          <label>Departamento</label>
-          <select
-            className="w-full"
-            value={normalize(filters.departamento)}
-            onChange={e => setFilters({ departamento: e.target.value, localidad: "Todos", barrio: "Todos" })}
-          >
-            {departamentos.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
+    <Paper
+      component="section"
+      aria-label="Filtros"
+      elevation={1}
+      sx={{ p: 1.5, mb: 3, border: 1, borderColor: "divider" }}
+    >
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(6, 1fr)" },
+          gap: 2,
+          alignItems: "end",
+        }}
+      >
+        <TextField
+          {...selectProps}
+          label="Departamento"
+          value={normalize(filters.departamento)}
+          onChange={e => setFilters({ departamento: e.target.value, localidad: "Todos", barrio: "Todos" })}
+        >
+          {departamentos.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+        </TextField>
 
-        <div className="filter-item">
-          <label>Localidad</label>
-          <select
-            className="w-full"
-            value={normalize(filters.localidad)}
-            onChange={e => setFilters({ localidad: e.target.value, barrio: "Todos" })}
-          >
-            {localidades.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-        </div>
+        <TextField
+          {...selectProps}
+          label="Localidad"
+          value={normalize(filters.localidad)}
+          onChange={e => setFilters({ localidad: e.target.value, barrio: "Todos" })}
+        >
+          {localidades.map(l => <MenuItem key={l} value={l}>{l}</MenuItem>)}
+        </TextField>
 
-        <div className="filter-item">
-          <label>Barrio</label>
-          <select
-            className="w-full"
-            value={normalize(filters.barrio)}
-            onChange={e => setFilters({ barrio: e.target.value })}
-          >
-            {barrios.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
-        </div>
+        <TextField
+          {...selectProps}
+          label="Barrio"
+          value={normalize(filters.barrio)}
+          onChange={e => setFilters({ barrio: e.target.value })}
+        >
+          {barrios.map(b => <MenuItem key={b} value={b}>{b}</MenuItem>)}
+        </TextField>
 
-        <div className="filter-item">
-          <label>Estado</label>
-          <select
-            className="w-full"
-            value={normalize(filters.estado)}
-            onChange={e => setFilters({ estado: e.target.value })}
-          >
-            {estados.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
+        <TextField
+          {...selectProps}
+          label="Estado"
+          value={normalize(filters.estado)}
+          onChange={e => setFilters({ estado: e.target.value })}
+        >
+          {estados.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+        </TextField>
 
-        <div className="filter-item">
-          <label>Escribano</label>
-          <select
-            className="w-full"
-            value={escribanoValue}
-            onChange={e => setFilters({ escribano: e.target.value === "Todos" ? "" : e.target.value })}
-          >
-            {["Todos", ...escribanosList].map(s => {
-              const count = s === "Todos" ? 0 : (demoraCount[s] || 0);
-              return (
-                <option key={s} value={s}>
-                  {count > 0 ? `${s} (${count} demora)` : s}
-                </option>
-              );
-            })}
-          </select>
-        </div>
+        <TextField
+          {...selectProps}
+          label="Escribano"
+          value={escribanoValue}
+          onChange={e => setFilters({ escribano: e.target.value === "Todos" ? "" : e.target.value })}
+        >
+          {["Todos", ...escribanosList].map(s => {
+            const count = s === "Todos" ? 0 : (demoraCount[s] || 0);
+            return (
+              <MenuItem key={s} value={s}>
+                {count > 0 ? `${s} (${count} demora)` : s}
+              </MenuItem>
+            );
+          })}
+        </TextField>
 
-        <div className="filter-item">
-          <label>DNI</label>
-          <input
-            className="w-full"
-            type="text"
-            value={filters.dni || ""}
-            onChange={e => setFilters({ dni: e.target.value })}
-            placeholder="Buscar por DNI..."
-          />
-        </div>
+        <TextField
+          label="DNI"
+          type="text"
+          size="small"
+          fullWidth
+          value={filters.dni || ""}
+          onChange={e => setFilters({ dni: e.target.value })}
+          placeholder="Buscar por DNI..."
+          InputLabelProps={{ shrink: true, sx: labelSx }}
+        />
 
         {resetFilters && (
-          <button
-            className="h-10 px-3 text-xs font-semibold rounded-lg border transition-colors self-end disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:bg-red-50 enabled:hover:text-red-700 enabled:hover:border-red-200 text-slate-500 border-slate-200 bg-white"
+          <Button
+            variant="outlined"
             onClick={() => resetFilters()}
             disabled={!hasActive}
             title="Restablecer todos los filtros"
+            sx={{
+              height: 40,
+              fontSize: 12,
+              fontWeight: 600,
+              color: "text.secondary",
+              borderColor: "divider",
+              "&:hover:not(:disabled)": {
+                borderColor: "error.main",
+                color: "error.main",
+                bgcolor: "action.hover",
+              },
+            }}
           >
             Limpiar filtros
-          </button>
+          </Button>
         )}
-      </div>
-    </div>
+      </Box>
+    </Paper>
   );
 }
