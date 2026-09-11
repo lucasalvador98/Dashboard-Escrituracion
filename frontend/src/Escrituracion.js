@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
 import useExportCSV from "./hooks/useExportCSV";
@@ -9,12 +10,24 @@ import SelectFilters from "./components/SelectFilters";
 import SlidePanel from "./components/SlidePanel";
 import { useGridApiRef } from "@mui/x-data-grid";
 import DataTable from "./components/ui/DataTable";
+import LoadingState from "./components/ui/LoadingState";
+import ErrorAlert from "./components/ui/ErrorAlert";
 import StatusCards from "./components/StatusCards";
 import DateDetailPanel from "./components/DateDetailPanel";
-import { semaphoreCell, pillCell, clickableCell } from "./components/ui/renderCells";
+import { semaphoreCell, pillCell, clickableCell, useSemaphorePalette } from "./components/ui/renderCells";
 import FileDownload from "@mui/icons-material/FileDownload";
 
 const PAGE_SIZE = 15;
+
+// Semaphore legend entries (P7b-migrate): the dot color comes from the theme
+// semaphore palette (palette[cls].text) so it stays distinguishable in both
+// light and dark mode (INV-2). Labels are unchanged (INV-3).
+const LEGEND_ITEMS = [
+  { cls: "green", label: "Dentro del plazo" },
+  { cls: "yellow", label: "Alerta (> plazo)" },
+  { cls: "red", label: "Demora (> +30%)" },
+  { cls: "gray", label: "Sin datos" },
+];
 
 // useDataLoader returns `data ?? []` — a NEW empty array on every render while
 // the query is loading. A per-render `[]` would invalidate the whole
@@ -160,6 +173,7 @@ function buildGridColumns({ allColumns, filterByField, setIntervalDetail, page }
 }
 
 export default function Escrituracion() {
+  const semaphore = useSemaphorePalette();
   const { data, loading, error } = useDataLoader("escrituracion");
   const { state: filters, set: setFilters, reset: resetFilters } = useUrlState({
     scope: "escrituracion",
@@ -293,12 +307,24 @@ export default function Escrituracion() {
   return (
     <>
       {/* Toolbar */}
-      <div className="toolbar-row">
-        <button className="toolbar-btn" onClick={exportCSV} title="Exportar CSV">
-          <FileDownload sx={{ fontSize: 16 }} />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0.5, mb: 1.5 }}>
+        <Button
+          onClick={exportCSV}
+          title="Exportar CSV"
+          size="small"
+          variant="outlined"
+          startIcon={<FileDownload sx={{ fontSize: 16 }} />}
+          sx={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: "text.secondary",
+            borderColor: "divider",
+            "&:hover": { color: "text.primary", borderColor: "text.disabled", bgcolor: "action.hover" },
+          }}
+        >
           Exportar
-        </button>
-      </div>
+        </Button>
+      </Box>
 
       <SelectFilters data={hook.processedData} filters={filters} setFilters={setFilters} resetFilters={resetFilters} />
 
@@ -312,36 +338,43 @@ export default function Escrituracion() {
         ipvCount={ipvCount}
       />
 
-      {loading && (
-        <div className="flex justify-center py-16">
-          <div className="spinner"></div>
-        </div>
-      )}
-      {error && <div className="alert alert-error my-4"><p>{error}</p></div>}
+      {loading && <LoadingState py={8} />}
+      {error && <ErrorAlert message={error} sx={{ my: 2 }} />}
 
       {!loading && !error && (
         <div>
-          <div className="semaforo-legend">
-            <div className="legend-item">
-              <span className="legend-color bg-green-500"></span>
-              <span>Dentro del plazo</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color bg-yellow-500"></span>
-              <span>Alerta (&gt; plazo)</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color bg-red-500"></span>
-              <span>Demora (&gt; +30%)</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color bg-gray-400"></span>
-              <span>Sin datos</span>
-            </div>
-            <div className="legend-item text-slate-400 ml-auto text-[10px]">
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              p: 1.5,
+              bgcolor: "background.paper",
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 2,
+              mb: 2,
+              fontSize: 12,
+              fontWeight: 500,
+              color: "text.secondary",
+            }}
+          >
+            {LEGEND_ITEMS.map(({ cls, label }) => (
+              <Box key={cls} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: "50%",
+                    bgcolor: (semaphore[cls] ?? semaphore.gray).text,
+                  }}
+                />
+                <Box component="span">{label}</Box>
+              </Box>
+            ))}
+            <Box component="span" sx={{ ml: "auto", fontSize: 10, color: "text.secondary" }}>
               {hook.sortedData.length} registros
-            </div>
-          </div>
+            </Box>
+          </Box>
 
           <DataTable
             rows={gridRows}

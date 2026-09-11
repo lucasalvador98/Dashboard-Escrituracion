@@ -5,6 +5,8 @@ import useUrlState from "./hooks/useUrlState";
 import { parseDate, contarDiasHabiles, diffClass, INTERVALS } from "./lib/deadlines";
 import SlidePanel from "./components/SlidePanel";
 import DataTable from "./components/ui/DataTable";
+import LoadingState from "./components/ui/LoadingState";
+import ErrorAlert from "./components/ui/ErrorAlert";
 import { useSemaphorePalette } from "./components/ui/renderCells";
 import { useChartPalette } from "./theme/charts";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -648,20 +650,11 @@ export default function DashboardTab() {
   }, [kpis, semaforo, demorados]);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="spinner"></div>
-        <p className="text-sm text-slate-400 font-medium">Cargando datos...</p>
-      </div>
-    );
+    return <LoadingState py={12} message="Cargando datos..." />;
   }
 
   if (error) {
-    return (
-      <div className="alert alert-error my-4">
-        <p>{error}</p>
-      </div>
-    );
+    return <ErrorAlert message={error} sx={{ my: 2 }} />;
   }
 
   if (!kpis) return null;

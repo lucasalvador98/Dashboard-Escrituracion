@@ -3,6 +3,8 @@ import TextField from "@mui/material/TextField";
 import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
 import DataTable from "./components/ui/DataTable";
+import LoadingState from "./components/ui/LoadingState";
+import ErrorAlert from "./components/ui/ErrorAlert";
 import API_CONFIG from "./config-api";
 
 const API_URL = API_CONFIG.BASE_URL_BACKEND;
@@ -239,8 +241,8 @@ export default function StockTab() {
     return ["Todos", ...Array.from(new Set(pool.map(i => i.Barrio).filter(Boolean))).sort()];
   }, [allData, filters.departamento, filters.localidad]);
 
-  if (loading) return <div className="flex justify-center py-8"><div className="spinner" /></div>;
-  if (error) return <div className="alert alert-error"><p>{error}</p></div>;
+  if (loading) return <LoadingState py={4} />;
+  if (error) return <ErrorAlert message={error} />;
 
   return (
     <div className="space-y-4">

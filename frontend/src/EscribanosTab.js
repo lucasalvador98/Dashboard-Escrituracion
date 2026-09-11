@@ -6,6 +6,8 @@ import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
 import SlidePanel from "./components/SlidePanel";
 import DataTable from "./components/ui/DataTable";
+import LoadingState from "./components/ui/LoadingState";
+import ErrorAlert from "./components/ui/ErrorAlert";
 import { countBadgeCell } from "./components/ui/renderCells";
 
 const PAGE_SIZE = 15;
@@ -197,8 +199,8 @@ export default function EscribanosTab() {
   );
   const gridHeight = 112 + rowsOnPage * 40;
 
-  if (loading) return <div className="flex justify-center py-16"><div className="spinner"></div></div>;
-  if (error) return <div className="alert alert-error my-4"><p>{error}</p></div>;
+  if (loading) return <LoadingState py={8} />;
+  if (error) return <ErrorAlert message={error} sx={{ my: 2 }} />;
 
   return (
     <div className="space-y-4">
