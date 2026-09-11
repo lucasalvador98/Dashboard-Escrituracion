@@ -1,4 +1,7 @@
 import React from "react";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -17,17 +20,27 @@ export default class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="error-boundary">
-          <div className="error-boundary-icon">⚠️</div>
-          <h3>Error en {this.props.name || "esta sección"}</h3>
-          <p>{this.state.error?.message || "Ocurrió un error inesperado."}</p>
-          <button
-            className="error-boundary-btn"
-            onClick={() => this.setState({ hasError: false, error: null })}
-          >
-            Reintentar
-          </button>
-        </div>
+        <Alert
+          severity="error"
+          icon={<span aria-hidden="true">⚠️</span>}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => this.setState({ hasError: false, error: null })}
+            >
+              Reintentar
+            </Button>
+          }
+          sx={{ my: 2, alignItems: "center" }}
+        >
+          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 700, mb: 0.5 }}>
+            Error en {this.props.name || "esta sección"}
+          </Typography>
+          <Typography variant="body2">
+            {this.state.error?.message || "Ocurrió un error inesperado."}
+          </Typography>
+        </Alert>
       );
     }
 
