@@ -96,6 +96,37 @@ export function pillCell(colorMap = PILL_COLORS, { onClick } = {}) {
 }
 
 /**
+ * renderCell builder for fixed-color count badges (Escribanos per-Estado
+ * columns). Renders a Chip with the given MUI color when the count is > 0 and
+ * a muted em dash otherwise, mirroring the previous table's
+ * `count > 0 ? badge : "—"` rendering. The color is fixed per column (each
+ * column represents one Estado), so the page passes its estado color directly.
+ *
+ * @param {string} color  MUI chip color for this column's estado
+ * @returns renderCell component
+ */
+export function countBadgeCell(color = "default") {
+  return function CountBadgeCell(params) {
+    const count = params.value;
+    if (!count) {
+      return (
+        <Box component="span" sx={{ color: "text.disabled" }}>
+          —
+        </Box>
+      );
+    }
+    return (
+      <Chip
+        size="small"
+        color={color}
+        label={count}
+        sx={{ fontWeight: 700, minWidth: 36 }}
+      />
+    );
+  };
+}
+
+/**
  * renderCell builder for click-to-filter cells (DG-6): Departamento, Localidad,
  * Barrio, Escribano Designado. onClick receives (row, field) so the page reads
  * the raw value (filter semantics unchanged).

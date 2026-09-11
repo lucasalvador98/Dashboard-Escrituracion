@@ -1,9 +1,29 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import SearchIcon from "@mui/icons-material/Search";
 import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
 import SlidePanel from "./components/SlidePanel";
+import DataTable from "./components/ui/DataTable";
+import { countBadgeCell } from "./components/ui/renderCells";
 
-const ITEMS_PER_PAGE = 15;
+const PAGE_SIZE = 15;
+
+// MUI chip color per estado, preserving the previous Tailwind badge semantics
+// (INV-3): En Trámite blue→info, Finalizada sin Entregar indigo→primary,
+// Entregada green→success, De Baja red→error, Hipotecada orange→warning,
+// No Retiradas slate→default, Definitivo retirado teal→success. Unknown
+// estados fall back to the neutral default chip.
+const ESTADO_BADGE_COLORS = {
+  "En Trámite": "info",
+  "Finalizada sin Entregar": "primary",
+  "Entregada": "success",
+  "De Baja": "error",
+  "Hipotecada": "warning",
+  "No Retiradas": "default",
+  "Definitivo retirado": "success",
+};
 
 function multiField(obj, ...fields) {
   for (const f of fields) {
@@ -20,7 +40,7 @@ function getNombre(item) {
   return multiField(item, "Beneficiarios", "Beneficiario", "APELLIDO Y NOMBRE", "ApellidoYNombre", "Nombre") || "—";
 }
 
-// Color de badge según estado
+// Color de badge según estado (usado por la tabla de detalle del panel).
 function estadoClass(estado) {
   switch (estado) {
     case "En Trámite": return "bg-blue-100 text-blue-700";
@@ -34,6 +54,65 @@ function estadoClass(estado) {
   }
 }
 
+// Sort comparators for the summary grid (DG-3): the Escribano column compares
+// case-insensitively (numeric collation), the Total/Estado columns compare
+// numerically. The summary data is already aggregated, so these only affect
+// user-driven header clicks and the initial total desc sort.
+function stringComparator(v1, v2) {
+  const a = v1 == null || v1 === "" ? null : String(v1);
+  const b = v2 == null || v2 === "" ? null : String(v2);
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return a.localeCompare(b, undefined, { numeric: true });
+}
+
+function numberComparator(v1, v2) {
+  const a = Number(v1);
+  const b = Number(v2);
+  const an = Number.isNaN(a) ? -Infinity : a;
+  const bn = Number.isNaN(b) ? -Infinity : b;
+  if (an === bn) return 0;
+  return an < bn ? -1 : 1;
+}
+
+// Adapter: aggregated escribano rows → DataGrid column defs. "Escribano" and
+// "Total" are followed by one column per Estado present in the data (dynamic,
+// not hardcoded — DG-2), each rendering a fixed-color count badge.
+function buildEscribanoColumns(estadosUnicos) {
+  const cols = [
+    {
+      field: "nombre",
+      headerName: "Escribano",
+      flex: 1,
+      minWidth: 220,
+      sortComparator: stringComparator,
+    },
+    {
+      field: "total",
+      headerName: "Total",
+      width: 110,
+      align: "center",
+      headerAlign: "center",
+      sortComparator: numberComparator,
+    },
+  ];
+
+  estadosUnicos.forEach((est, idx) => {
+    cols.push({
+      field: `estado_${idx}`,
+      headerName: est,
+      width: Math.max(120, est.length * 9 + 32),
+      align: "center",
+      headerAlign: "center",
+      sortComparator: numberComparator,
+      renderCell: countBadgeCell(ESTADO_BADGE_COLORS[est] || "default"),
+    });
+  });
+
+  return cols;
+}
+
 export default function EscribanosTab() {
   const { data, loading, error } = useDataLoader("escrituracion");
   const { state: urlState, set: setUrl } = useUrlState({
@@ -42,8 +121,10 @@ export default function EscribanosTab() {
     sharedKeys: ["escribano", "estado"],
     scopedKeys: ["search"],
   });
-  const [page, setPage] = useState(1);
   const [selectedEscribano, setSelectedEscribano] = useState(null);
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: PAGE_SIZE });
+  // DG-3: initial sort is total desc (the previous table's default order).
+  const [sortModel, setSortModel] = useState([{ field: "total", sort: "desc" }]);
 
   const allData = useMemo(() => Array.isArray(data) ? data : [], [data]);
 
@@ -83,36 +164,38 @@ export default function EscribanosTab() {
     return escribanos.filter(e => e.nombre.toUpperCase().includes(q));
   }, [escribanos, urlState.search]);
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const safePage = Math.min(Math.max(1, page), totalPages);
-  const paginated = filtered.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+  // DG-4: reset to the first page whenever the search changes.
+  useEffect(() => {
+    setPaginationModel(p => (p.page === 0 ? p : { ...p, page: 0 }));
+  }, [filtered]);
 
-  // Reset page on search
-  const handleSearch = (val) => { setUrl({ search: val }); setPage(1); };
+  const columns = useMemo(() => buildEscribanoColumns(estadosUnicos), [estadosUnicos]);
 
-  function renderPagination() {
-    if (totalPages <= 1) return null;
-    const pages = [];
-    pages.push(<button key={1} className={safePage === 1 ? "active" : ""} onClick={() => setPage(1)}>1</button>);
-    if (totalPages > 6) {
-      let start = Math.max(2, safePage - 2);
-      let end = Math.min(totalPages - 1, safePage + 2);
-      if (start > 2) pages.push(<span key="se" className="ellipsis">...</span>);
-      for (let i = start; i <= end; i++) pages.push(<button key={i} className={safePage === i ? "active" : ""} onClick={() => setPage(i)}>{i}</button>);
-      if (end < totalPages - 1) pages.push(<span key="ee" className="ellipsis">...</span>);
-      pages.push(<button key={totalPages} className={safePage === totalPages ? "active" : ""} onClick={() => setPage(totalPages)}>{totalPages}</button>);
-    } else {
-      for (let i = 2; i <= totalPages; i++) pages.push(<button key={i} className={safePage === i ? "active" : ""} onClick={() => setPage(i)}>{i}</button>);
-    }
-    return (
-      <div className="pagination">
-        <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage === 1}>&lt;</button>
-        {pages}
-        <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage === totalPages}>&gt;</button>
-      </div>
-    );
-  }
+  // DataGrid needs unique row ids; each row also carries the estado counts as
+  // flat fields (`estado_<i>`) so the per-Estado badge columns can render them
+  // from params.value. The full escribano object (registros/estadoCounts) is
+  // kept on the row for the SlidePanel detail (onRowClick).
+  const gridRows = useMemo(
+    () =>
+      filtered.map((e, idx) => {
+        const row = { ...e, _id: idx };
+        estadosUnicos.forEach((est, i) => {
+          row[`estado_${i}`] = e.estadoCounts[est] || 0;
+        });
+        return row;
+      }),
+    [filtered, estadosUnicos]
+  );
+
+  const handleSearch = (val) => setUrl({ search: val });
+
+  // Size the grid to the rows on the current page so short lists do not render
+  // a mostly-empty box (same approach as StockTab/P4a).
+  const rowsOnPage = Math.min(
+    PAGE_SIZE,
+    Math.max(gridRows.length - paginationModel.page * PAGE_SIZE, 1)
+  );
+  const gridHeight = 112 + rowsOnPage * 40;
 
   if (loading) return <div className="flex justify-center py-16"><div className="spinner"></div></div>;
   if (error) return <div className="alert alert-error my-4"><p>{error}</p></div>;
@@ -130,62 +213,36 @@ export default function EscribanosTab() {
 
       {/* Búsqueda */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-          </svg>
-          <input
-            type="text"
-            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Buscar escribano..."
-            value={urlState.search}
-            onChange={e => handleSearch(e.target.value)}
-          />
-        </div>
+        <TextField
+          size="small"
+          value={urlState.search}
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Buscar escribano..."
+          inputProps={{ "aria-label": "Buscar escribano" }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" sx={{ color: "text.secondary" }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ width: 320, maxWidth: "100%" }}
+        />
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 font-medium text-sm">No se encontraron escribanos</div>
-      ) : (
-        <>
-          <div className="table-wrap overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b-2 border-slate-200">
-                <th className="px-3 py-2 text-left text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Escribano</th>
-                <th className="px-3 py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Total</th>
-                {estadosUnicos.map(est => (
-                  <th key={est} className="px-3 py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">{est}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.map((e, idx) => (
-                <tr
-                  key={idx}
-                  className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
-                  onClick={() => setSelectedEscribano(e)}
-                >
-                  <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap">{e.nombre}</td>
-                  <td className="px-3 py-2 text-center font-bold text-slate-900">{e.total}</td>
-                  {estadosUnicos.map(est => {
-                    const count = e.estadoCounts[est] || 0;
-                    return (
-                      <td key={est} className="px-3 py-2 text-center">
-                        {count > 0 ? (
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${estadoClass(est)}`}>{count}</span>
-                        ) : <span className="text-slate-300">—</span>}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-            </table>
-          </div>
-          {renderPagination()}
-        </>
-      )}
+      <DataTable
+        rows={gridRows}
+        columns={columns}
+        getRowId={row => row._id}
+        height={gridHeight}
+        showToolbar
+        paginationModel={paginationModel}
+        onPaginationModelChange={setPaginationModel}
+        sortModel={sortModel}
+        onSortModelChange={setSortModel}
+        onRowClick={params => setSelectedEscribano(params.row)}
+        emptyState={{ message: "Sin resultados", hint: "Probá ajustando la búsqueda" }}
+      />
 
       {/* Panel lateral con registros del escribano */}
       <SlidePanel
