@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
 import SearchIcon from "@mui/icons-material/Search";
 import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
@@ -40,20 +49,6 @@ function getEscribano(item) {
 
 function getNombre(item) {
   return multiField(item, "Beneficiarios", "Beneficiario", "APELLIDO Y NOMBRE", "ApellidoYNombre", "Nombre") || "—";
-}
-
-// Color de badge según estado (usado por la tabla de detalle del panel).
-function estadoClass(estado) {
-  switch (estado) {
-    case "En Trámite": return "bg-blue-100 text-blue-700";
-    case "Finalizada sin Entregar": return "bg-indigo-100 text-indigo-700";
-    case "Entregada": return "bg-green-100 text-green-700";
-    case "De Baja": return "bg-red-100 text-red-700";
-    case "Hipotecada": return "bg-orange-100 text-orange-700";
-    case "No Retiradas": return "bg-slate-200 text-slate-600";
-    case "Definitivo retirado": return "bg-teal-100 text-teal-700";
-    default: return "bg-slate-100 text-slate-600";
-  }
 }
 
 // Sort comparators for the summary grid (DG-3): the Escribano column compares
@@ -203,18 +198,20 @@ export default function EscribanosTab() {
   if (error) return <ErrorAlert message={error} sx={{ my: 2 }} />;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Escribanos</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Box>
+          <Typography component="h2" sx={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.025em", color: "text.primary" }}>
+            Escribanos
+          </Typography>
+          <Typography sx={{ mt: 0.5, fontSize: 14, color: "text.secondary" }}>
             {escribanos.length} escribanos — {filtered.length} mostrados
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Box>
 
       {/* Búsqueda */}
-      <div className="flex items-center gap-3">
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
         <TextField
           size="small"
           value={urlState.search}
@@ -230,7 +227,7 @@ export default function EscribanosTab() {
           }}
           sx={{ width: 320, maxWidth: "100%" }}
         />
-      </div>
+      </Box>
 
       <DataTable
         rows={gridRows}
@@ -253,60 +250,66 @@ export default function EscribanosTab() {
         title={selectedEscribano ? selectedEscribano.nombre : ""}
       >
         {selectedEscribano && (
-          <div className="space-y-4">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {/* Resumen */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-50 rounded-xl p-3 text-center">
-                <div className="text-2xl font-black text-slate-900">{selectedEscribano.total}</div>
-                <div className="text-xs font-medium text-slate-500">Total</div>
-              </div>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1.5 }}>
+              <Box sx={{ bgcolor: "action.hover", borderRadius: 2, p: 1.5, textAlign: "center" }}>
+                <Typography sx={{ fontSize: 24, fontWeight: 900, color: "text.primary" }}>{selectedEscribano.total}</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 500, color: "text.secondary" }}>Total</Typography>
+              </Box>
               {estadosUnicos.map(est => {
                 const count = selectedEscribano.estadoCounts[est] || 0;
                 if (!count) return null;
                 return (
-                  <div key={est} className="bg-slate-50 rounded-xl p-3 text-center">
-                    <div className="text-2xl font-black text-slate-700">{count}</div>
-                    <div className="text-xs font-medium text-slate-500">{est}</div>
-                  </div>
+                  <Box key={est} sx={{ bgcolor: "action.hover", borderRadius: 2, p: 1.5, textAlign: "center" }}>
+                    <Typography sx={{ fontSize: 24, fontWeight: 900, color: "text.primary" }}>{count}</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 500, color: "text.secondary" }}>{est}</Typography>
+                  </Box>
                 );
               })}
-            </div>
+            </Box>
 
             {/* Tabla de registros */}
-            <div className="text-xs font-medium text-slate-500">
+            <Typography sx={{ fontSize: 12, fontWeight: 500, color: "text.secondary" }}>
               {selectedEscribano.registros.length} registros
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">#</th>
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">Beneficiario</th>
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">DNI</th>
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">Barrio</th>
-                    <th className="px-2 py-1.5 text-left font-bold text-slate-500">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedEscribano.registros.map((item, idx) => (
-                    <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="px-2 py-1">{idx + 1}</td>
-                      <td className="px-2 py-1 font-medium">{getNombre(item)}</td>
-                      <td className="px-2 py-1 font-mono">{item.DNI || "—"}</td>
-                      <td className="px-2 py-1">{item.Barrio || "—"}</td>
-                      <td className="px-2 py-1">
-                        <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold ${estadoClass(item.Estado || item.estado || item.EstadoProceso || "")}`}>
-                          {item.Estado || item.estado || item.EstadoProceso || "—"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            </Typography>
+            <TableContainer sx={{ overflowX: "auto" }}>
+              <Table size="small" sx={{ minWidth: 520 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>Beneficiario</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>DNI</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>Barrio</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>Estado</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {selectedEscribano.registros.map((item, idx) => {
+                    const estado = item.Estado || item.estado || item.EstadoProceso || "";
+                    return (
+                      <TableRow key={idx} hover>
+                        <TableCell sx={{ color: "text.secondary" }}>{idx + 1}</TableCell>
+                        <TableCell sx={{ fontWeight: 500, color: "text.primary" }}>{getNombre(item)}</TableCell>
+                        <TableCell sx={{ fontFamily: "monospace", color: "text.primary" }}>{item.DNI || "—"}</TableCell>
+                        <TableCell sx={{ color: "text.primary" }}>{item.Barrio || "—"}</TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={estado || "—"}
+                            color={ESTADO_BADGE_COLORS[estado] || "default"}
+                            sx={{ fontSize: 10, fontWeight: 700, height: 20 }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
         )}
       </SlidePanel>
-    </div>
+    </Box>
   );
 }

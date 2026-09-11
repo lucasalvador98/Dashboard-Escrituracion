@@ -159,4 +159,21 @@ describe("DashboardTab demorados (P5b)", () => {
     );
     expect(badges.length).toBe(3);
   });
+
+  it("renders the DemoradoDetailPanel severity badge as a themed MUI Chip (P7b-migrate)", () => {
+    renderDashboard();
+    openDemorados();
+
+    const anaRow = rows().find(r => r.textContent.includes("Ana López"));
+    expect(anaRow).not.toBeUndefined();
+    click(anaRow);
+
+    // Text parity kept (INV-3) and the severity badge is now an MUI Chip
+    // colored from the theme semaphore palette (dark-mode legible, INV-2).
+    expect(container.textContent).toContain("Plazo esperado: 20 días hábiles");
+    const critica = Array.from(container.querySelectorAll(".MuiChip-root")).find(
+      c => c.textContent.trim() === "Crítica"
+    );
+    expect(critica).not.toBeUndefined();
+  });
 });

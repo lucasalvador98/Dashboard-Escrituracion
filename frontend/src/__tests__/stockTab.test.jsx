@@ -119,7 +119,7 @@ function expandGroup(estado) {
 }
 
 function groupWrapper(estado) {
-  return findSpan(estado).closest(".border.rounded-lg");
+  return findSpan(estado).closest(".MuiAccordion-root");
 }
 
 afterEach(() => {
@@ -212,5 +212,36 @@ describe("StockTab grid (P4a)", () => {
 
     click(enTramiteButton);
     expect(downloads).toEqual(["Stock_en-tramite.xlsx"]);
+  });
+
+  it("renders the page shell as MUI Accordions with the MUI filter bar (P7b-migrate)", () => {
+    renderStock();
+
+    // One MUI Accordion per estado group, collapsed by default (bodies unmounted).
+    const accordions = container.querySelectorAll(".MuiAccordion-root");
+    expect(accordions.length).toBe(3);
+    expect(container.textContent).not.toContain("Ana López");
+
+    // Filter bar: MUI TextField native selects with the same labels/options.
+    const depto = container.querySelector('select[aria-label="Departamento"]');
+    const loc = container.querySelector('select[aria-label="Localidad"]');
+    const barrio = container.querySelector('select[aria-label="Barrio"]');
+    expect(depto).not.toBeNull();
+    expect(loc).not.toBeNull();
+    expect(barrio).not.toBeNull();
+    expect(depto.textContent).toContain("Capital");
+    expect(depto.textContent).toContain("Interior");
+
+    // Limpiar filtros is a MUI Button, disabled at the default state.
+    const limpiar = Array.from(container.querySelectorAll("button")).find(
+      b => b.textContent.trim() === "Limpiar filtros"
+    );
+    expect(limpiar).not.toBeUndefined();
+    expect(limpiar.classList.contains("MuiButton-root")).toBe(true);
+    expect(limpiar.disabled).toBe(true);
+
+    // The Planilla button is a MUI Button inside the summary.
+    const planilla = groupWrapper("En Trámite").querySelector("button");
+    expect(planilla.classList.contains("MuiButton-root")).toBe(true);
   });
 });

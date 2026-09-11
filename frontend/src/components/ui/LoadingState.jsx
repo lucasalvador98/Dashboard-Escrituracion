@@ -4,12 +4,12 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 
 /**
- * Shared loading placeholder (P7b-migrate): replaces the old `.spinner`
- * Tailwind/CSS class with a themed MUI CircularProgress so the loading state is
- * legible in both light and dark mode.
+ * Shared loading placeholder (P7b-migrate): replaces the old Tailwind loading
+ * indicator CSS class with a themed MUI CircularProgress so the loading state
+ * is legible in both light and dark mode.
  *
  * Props:
- *  - message: optional text shown under the spinner (e.g. "Cargando datos...")
+ *  - message: optional text shown under the progress indicator (e.g. "Cargando datos...")
  *  - py: vertical padding in MUI spacing units (py-8 → 4, py-16 → 8, py-24 → 12)
  */
 export default function LoadingState({ message, py = 6, label = "Cargando" }) {

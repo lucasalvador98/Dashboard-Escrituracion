@@ -159,4 +159,27 @@ describe("EscribanosTab grid (P4b)", () => {
     expect(container.textContent).toContain("Ana López");
     expect(container.textContent).toContain("Dora Ruiz");
   });
+
+  it("renders the detail panel with an MUI Table and estado chips (P7b-migrate)", () => {
+    renderEscribanos();
+    click(rows()[0]); // Perez (total 4, sorted first)
+
+    // Registros render as an MUI Table: 1 header row + 4 body rows.
+    expect(container.querySelector(".MuiTable-root")).not.toBeNull();
+    expect(container.querySelectorAll(".MuiTableRow-root").length).toBe(5);
+
+    // Estado badges are MUI Chips with the preserved color mapping
+    // (De Baja → error, En Trámite → info).
+    const deBaja = Array.from(container.querySelectorAll(".MuiChip-root")).find(
+      c => c.textContent === "De Baja"
+    );
+    expect(deBaja).not.toBeUndefined();
+    expect(deBaja.classList.contains("MuiChip-colorError")).toBe(true);
+
+    const enTramite = Array.from(container.querySelectorAll(".MuiChip-root")).find(
+      c => c.textContent === "En Trámite"
+    );
+    expect(enTramite).not.toBeUndefined();
+    expect(enTramite.classList.contains("MuiChip-colorInfo")).toBe(true);
+  });
 });

@@ -71,13 +71,6 @@ function severidadDias(dias) {
   return diffClass(dias, ESCROW_ESPERADO);
 }
 
-const SEVERIDAD_STYLE = {
-  green: { badge: "bg-emerald-100 text-emerald-700", row: "hover:bg-emerald-50/40" },
-  yellow: { badge: "bg-amber-100 text-amber-700", row: "hover:bg-amber-50/40" },
-  red: { badge: "bg-red-100 text-red-700", row: "hover:bg-red-50/40" },
-  gray: { badge: "bg-slate-100 text-slate-500", row: "hover:bg-slate-50/40" },
-};
-
 // Sort comparators for the demorados grid (DG-3): case-insensitive text with
 // numeric collation (nulls/empty to the bottom) and plain numeric order.
 function stringComparator(v1, v2) {
@@ -660,7 +653,7 @@ export default function DashboardTab() {
   if (!kpis) return null;
 
   return (
-    <div className="space-y-6">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
 
       {/* ── Tab Switcher ── */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1.5 }}>
@@ -1289,18 +1282,21 @@ export default function DashboardTab() {
         {demoradoDetail && <DemoradoDetailPanel item={demoradoDetail} />}
       </SlidePanel>
 
-    </div>
+    </Box>
   );
 }
 
 
 function DemoradoDetailPanel({ item }) {
+  const theme = useTheme();
+  const semaforoPalette = useSemaphorePalette();
   const benef = item._beneficiario || "—";
   const escribano = item._escribano || "—";
   const demora = item._demora ?? null;
   const dias = item._dias ?? null;
   const sev = severidadDias(dias);
-  const sevBadge = SEVERIDAD_STYLE[sev]?.badge || SEVERIDAD_STYLE.gray.badge;
+  const sevColors = semaforoPalette[sev] ?? semaforoPalette.gray;
+  const esCritica = demora !== null && demora > 10;
 
   // Secciones: datos accionables primero, técnica al final
   const secciones = [
@@ -1345,35 +1341,58 @@ function DemoradoDetailPanel({ item }) {
   ];
 
   const renderCampo = ([label, val]) => (
-    <div key={label} className="flex items-start justify-between px-3 py-2 bg-white border-b border-slate-50 last:border-0">
-      <span className="text-[11px] font-medium text-slate-500 mr-3 flex-shrink-0">{label}</span>
-      <span className="text-xs font-semibold text-slate-800 text-right break-words max-w-[60%]">{val || "—"}</span>
-    </div>
+    <Box
+      key={label}
+      sx={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        px: 1.5,
+        py: 1,
+        bgcolor: "background.paper",
+        borderBottom: "1px solid",
+        borderColor: "divider",
+        "&:last-of-type": { borderBottom: 0 },
+      }}
+    >
+      <Typography sx={{ fontSize: 11, fontWeight: 500, color: "text.secondary", mr: 1.5, flexShrink: 0 }}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, fontWeight: 600, color: "text.primary", textAlign: "right", wordBreak: "break-word", maxWidth: "60%" }}>{val || "—"}</Typography>
+    </Box>
   );
 
   return (
-    <div className="p-1 space-y-5">
+    <Box sx={{ p: 0.5, display: "flex", flexDirection: "column", gap: 2.5 }}>
       {/* Resumen de la demora */}
-      <div className={`rounded-2xl p-4 ${demora !== null && demora > 10 ? "bg-red-50 border border-red-200" : "bg-amber-50 border border-amber-200"}`}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Acep→Firma</div>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${sevBadge}`}>
-            {sev === "green" ? "Leve" : sev === "yellow" ? "Media" : "Crítica"}
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl font-black text-red-600">{dias}d</span>
-          <div>
-            <div className="text-xs font-bold text-red-600">+{demora}d de demora</div>
-            <div className="text-[11px] text-slate-500">Plazo esperado: 20 días hábiles</div>
-          </div>
-        </div>
-      </div>
+      <Box
+        sx={{
+          borderRadius: 2,
+          p: 2,
+          bgcolor: esCritica ? alpha(theme.palette.error.main, 0.08) : alpha(theme.palette.warning.main, 0.08),
+          border: "1px solid",
+          borderColor: esCritica ? "error.light" : "warning.light",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+          <Typography sx={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "text.secondary" }}>Acep→Firma</Typography>
+          <Chip
+            size="small"
+            label={sev === "green" ? "Leve" : sev === "yellow" ? "Media" : "Crítica"}
+            sx={{ bgcolor: sevColors.bg, color: sevColors.text, fontWeight: 700, height: 20, fontSize: 10 }}
+          />
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Typography sx={{ fontSize: 24, fontWeight: 900, color: "error.main" }}>{dias}d</Typography>
+          <Box>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: "error.main" }}>+{demora}d de demora</Typography>
+            <Typography sx={{ fontSize: 11, color: "text.secondary" }}>Plazo esperado: 20 días hábiles</Typography>
+          </Box>
+        </Box>
+      </Box>
 
       {/* Fechas del proceso */}
-      <div>
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Fechas del Proceso</div>
-        <div className="grid grid-cols-1 gap-2">
+      <Box>
+        <Typography sx={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "text.secondary", mb: 1 }}>Fechas del Proceso</Typography>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 1 }}>
           {[
             ["Ingreso Colegio", item["Fecha Ingreso Colegio de Escribanos"]],
             ["Sorteo", item["Fecha de Sorteo"]],
@@ -1381,38 +1400,41 @@ function DemoradoDetailPanel({ item }) {
             ["Firma", item["Fecha de Firma"]],
             ["Ingreso Registro", item["Fecha de Ingreso al Registro"]],
             ["PT Digital", item["Fecha de envío PT digital"]],
-          ].map(([label, val]) => (
-            <div key={label} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
-              <span className="text-[11px] font-medium text-slate-500">{label}</span>
-              <span className={`text-xs font-semibold ${!val || val === "N/A" || val === "" ? "text-slate-300" : "text-slate-800"}`}>
-                {formatFechaCorta(val)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+          ].map(([label, val]) => {
+            const vacio = !val || val === "N/A" || val === "";
+            return (
+              <Box key={label} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", bgcolor: "action.hover", borderRadius: 1, px: 1.5, py: 1 }}>
+                <Typography sx={{ fontSize: 11, fontWeight: 500, color: "text.secondary" }}>{label}</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: vacio ? "text.disabled" : "text.primary" }}>
+                  {formatFechaCorta(val)}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
 
       {/* Campos agrupados */}
       {secciones.map(sec => (
-        <div key={sec.titulo}>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">{sec.titulo}</div>
-          <div className="border border-slate-100 rounded-xl overflow-hidden">
+        <Box key={sec.titulo}>
+          <Typography sx={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "text.secondary", mb: 1 }}>{sec.titulo}</Typography>
+          <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1.5, overflow: "hidden" }}>
             {sec.campos.map(renderCampo)}
-          </div>
-        </div>
+          </Box>
+        </Box>
       ))}
 
       {/* Estado y observaciones */}
       {(item.Estado || item.estado || item.Observaciones) && (
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Estado</div>
-          <div className="border border-slate-100 rounded-xl overflow-hidden">
+        <Box>
+          <Typography sx={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "text.secondary", mb: 1 }}>Estado</Typography>
+          <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1.5, overflow: "hidden" }}>
             {renderCampo(["Estado", item.Estado || item.estado || "—"])}
             {renderCampo(["Observaciones", item.Observaciones || "—"])}
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
 

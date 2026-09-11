@@ -2,8 +2,8 @@ import React from "react";
 import Alert from "@mui/material/Alert";
 
 /**
- * Shared error placeholder (P7b-migrate): replaces the old `.alert
- * .alert-error` Tailwind/CSS classes with a themed MUI Alert. The message is
+ * Shared error placeholder (P7b-migrate): replaces the old alert error CSS
+ * classes with a themed MUI Alert. The message is
  * rendered verbatim so the user-visible text is unchanged (INV-3).
  *
  * Props:

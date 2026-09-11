@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
+import Accordion from "@mui/material/Accordion";
+import AccordionSummary from "@mui/material/AccordionSummary";
+import AccordionDetails from "@mui/material/AccordionDetails";
+import { useTheme, alpha } from "@mui/material/styles";
 import useDataLoader from "./hooks/useDataLoader";
 import useUrlState from "./hooks/useUrlState";
 import DataTable from "./components/ui/DataTable";
@@ -152,7 +159,7 @@ function AccordionTable({ items }) {
   const gridHeight = 112 + rowsOnPage * 40;
 
   return (
-    <div className="space-y-2">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
       <TextField
         size="small"
         fullWidth
@@ -173,11 +180,12 @@ function AccordionTable({ items }) {
         onSortModelChange={setSortModel}
         emptyState={{ message: "Sin resultados", hint: "Probá ajustando la búsqueda" }}
       />
-    </div>
+    </Box>
   );
 }
 
 export default function StockTab() {
+  const theme = useTheme();
   const { data, loading, error } = useDataLoader("escrituracion");
   const { state: filters, set: setFilters, reset: resetFilters } = useUrlState({
     scope: "stock",
@@ -245,94 +253,160 @@ export default function StockTab() {
   if (error) return <ErrorAlert message={error} />;
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Stock</h2>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Typography component="h2" sx={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.025em", color: "text.primary" }}>
+        Stock
+      </Typography>
 
-      <div className="flex gap-3 flex-wrap">
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Departamento</label>
-          <select
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+      {/* Filtros: Departamento / Localidad / Barrio (mismos valores y resets en cascada) */}
+      <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Typography component="label" htmlFor="stock-filter-departamento" sx={{ fontSize: 10, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Departamento
+          </Typography>
+          <TextField
+            id="stock-filter-departamento"
+            select
+            size="small"
             value={filters.departamento}
             onChange={e => setFilters({ departamento: e.target.value, localidad: "Todos", barrio: "Todos" })}
+            SelectProps={{ native: true, inputProps: { "aria-label": "Departamento" } }}
+            sx={{ minWidth: 160 }}
           >
             {departamentos.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Localidad</label>
-          <select
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          </TextField>
+        </Box>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Typography component="label" htmlFor="stock-filter-localidad" sx={{ fontSize: 10, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Localidad
+          </Typography>
+          <TextField
+            id="stock-filter-localidad"
+            select
+            size="small"
             value={filters.localidad}
             onChange={e => setFilters({ localidad: e.target.value, barrio: "Todos" })}
+            SelectProps={{ native: true, inputProps: { "aria-label": "Localidad" } }}
+            sx={{ minWidth: 160 }}
           >
             {localidades.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Barrio</label>
-          <select
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          </TextField>
+        </Box>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Typography component="label" htmlFor="stock-filter-barrio" sx={{ fontSize: 10, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Barrio
+          </Typography>
+          <TextField
+            id="stock-filter-barrio"
+            select
+            size="small"
             value={filters.barrio}
             onChange={e => setFilters({ barrio: e.target.value })}
+            SelectProps={{ native: true, inputProps: { "aria-label": "Barrio" } }}
+            sx={{ minWidth: 160 }}
           >
             {barrios.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
-        </div>
-        <div className="flex items-end">
-          <button
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          </TextField>
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "flex-end" }}>
+          <Button
+            variant="outlined"
+            size="small"
             onClick={resetFilters}
             disabled={filters.departamento === "Todos" && filters.localidad === "Todos" && filters.barrio === "Todos"}
+            sx={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "text.secondary",
+              borderColor: "divider",
+              "&:hover:not(:disabled)": {
+                color: "error.main",
+                borderColor: "error.light",
+                bgcolor: alpha(theme.palette.error.main, 0.04),
+              },
+            }}
           >
             Limpiar filtros
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Box>
+      </Box>
 
-      <div className="space-y-2">
+      {/* Acordeones por estado */}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
         {allEstados.length === 0 && (
-          <div className="text-center py-8 text-slate-400 text-sm">Sin datos para los filtros seleccionados</div>
+          <Box sx={{ textAlign: "center", py: 4, color: "text.secondary", fontSize: 14 }}>
+            Sin datos para los filtros seleccionados
+          </Box>
         )}
         {allEstados.map(estado => {
           const items = estadoGroups[estado];
-          const isOpen = expanded[estado];
+          const isOpen = !!expanded[estado];
           const formato = ESTADO_FORMATO[estado];
 
           return (
-            <div key={estado} className="border rounded-lg">
-              <div
-                className="bg-slate-50 hover:bg-slate-100 cursor-pointer p-3 flex justify-between items-center transition-colors"
-                onClick={() => toggleAccordion(estado)}
+            <Accordion
+              key={estado}
+              expanded={isOpen}
+              onChange={() => toggleAccordion(estado)}
+              disableGutters
+              sx={{
+                bgcolor: "background.paper",
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                boxShadow: "none",
+                overflow: "hidden",
+                "&:before": { display: "none" },
+              }}
+            >
+              <AccordionSummary
+                expandIcon={<span style={{ fontSize: 12 }}>{isOpen ? "▼" : "▶"}</span>}
+                sx={{
+                  bgcolor: "action.hover",
+                  "&:hover": { bgcolor: "action.selected" },
+                  minHeight: 0,
+                  "&.Mui-expanded": { minHeight: 0 },
+                  "& .MuiAccordionSummary-content": { margin: 0, py: 1.25, alignItems: "center", gap: 1.5 },
+                  "& .MuiAccordionSummary-expandIconWrapper": { transform: "none" },
+                }}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-slate-400 text-xs">{isOpen ? "▼" : "▶"}</span>
-                  <span className="font-bold text-slate-800 text-sm">{estado}</span>
-                  <span className="px-2 py-0.5 text-[11px] font-semibold bg-slate-200 text-slate-600 rounded-full">
-                    {items.length}
-                  </span>
-                </div>
+                <Typography component="span" sx={{ fontWeight: 700, fontSize: 14, color: "text.primary" }}>{estado}</Typography>
+                <Box component="span" sx={{ px: 1, py: 0.25, fontSize: 11, fontWeight: 600, bgcolor: "action.selected", color: "text.secondary", borderRadius: "999px" }}>
+                  {items.length}
+                </Box>
                 {formato && (
-                  <button
-                    className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 transition-colors font-medium"
+                  <Button
+                    size="small"
                     onClick={e => {
                       e.stopPropagation();
                       downloadExcel(buildExportUrl(formato, filters), `Stock_${formato}.xlsx`);
                     }}
+                    sx={{
+                      ml: "auto",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      minWidth: 0,
+                      px: 1.5,
+                      py: 0.25,
+                      borderRadius: 1,
+                      bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      color: "primary.main",
+                      "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.16) },
+                    }}
                   >
                     ↓ Planilla
-                  </button>
+                  </Button>
                 )}
-              </div>
+              </AccordionSummary>
               {isOpen && (
-                <div className="border-t p-3">
+                <AccordionDetails sx={{ p: 1.5, borderTop: "1px solid", borderColor: "divider" }}>
                   <AccordionTable items={items} />
-                </div>
+                </AccordionDetails>
               )}
-            </div>
+            </Accordion>
           );
         })}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
